@@ -10,12 +10,6 @@
 #define kMinGapDurationInSeconds 7
 #define kDurationThresholdInMinutes 5
 
-#ifdef DEBUG
-static const int ddLogLevel = LOG_LEVEL_WARN;
-#else
-static const int ddLogLevel = LOG_LEVEL_WARN;
-#endif
-
 @implementation VKVideoPlayerCaption
 @synthesize languageCode;
 @synthesize segments = _segments;
