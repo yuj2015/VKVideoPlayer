@@ -114,7 +114,7 @@ typedef enum {
   self.view.delegate = self;
   [self.view setPlayButtonsSelected:NO];
   [self.view.scrubber setValue:0.0f animated:NO];
-  self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+  self.view.controlHideCountdown = [self.view.playerControlsAutoHideTime integerValue];
   
   if (!self.forceRotate) {
     self.view.fullscreenButton.hidden = YES;
@@ -767,7 +767,7 @@ typedef enum {
         self.playerControlsEnabled = NO;
         break;
       case VKVideoPlayerStateContentPlaying: {
-        self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+        self.view.controlHideCountdown = [self.view.playerControlsAutoHideTime integerValue];
         self.playerControlsEnabled = YES;
         [self.view setPlayButtonsSelected:NO];
         self.view.playerLayerView.hidden = NO;
@@ -1056,7 +1056,7 @@ typedef enum {
 #pragma mark - Handle volume change
 
 - (void)volumeChanged:(NSNotification *)notification {
-  self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+  self.view.controlHideCountdown = [self.view.playerControlsAutoHideTime integerValue];
 }
 
 

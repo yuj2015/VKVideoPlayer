@@ -11,7 +11,6 @@
 #import "VKView.h"
 #import "VKVideoPlayerConfig.h"
 
-#define kPlayerControlsAutoHideTime    5
 #define kPlayerControlsDisableAutoHide -1
 
 @class VKVideoPlayerTrack;
@@ -92,6 +91,8 @@
 @property (nonatomic, strong) IBOutlet UIButton* topPortraitCloseButton;
 
 @property (nonatomic, strong) IBOutlet UIImageView* playerShadow;
+
+@property (nonatomic, strong) NSNumber* playerControlsAutoHideTime;
 
 - (IBAction)fullscreenButtonTapped:(id)sender;
 - (IBAction)playButtonTapped:(id)sender;

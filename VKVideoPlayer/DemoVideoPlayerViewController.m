@@ -20,6 +20,7 @@
   self.player = [[VKVideoPlayer alloc] init];
   self.player.delegate = self;
   self.player.view.frame = self.view.bounds;
+  self.player.view.playerControlsAutoHideTime = @10;
   [self.view addSubview:self.player.view];
   
   [self addDemoControl];
@@ -109,7 +110,7 @@
           [weakSelf setLanguageCode:item];
           [button dismiss];
         } didDismissBlock:^{
-          weakSelf.player.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+          weakSelf.player.view.controlHideCountdown = [weakSelf.player.view.playerControlsAutoHideTime integerValue];
         }];
       }
     });

@@ -104,6 +104,8 @@
   }
   
   [self.topPortraitCloseButton addTarget:self action:@selector(doneButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+  
+  self.playerControlsAutoHideTime = @5;
 }
 
 - (id)initWithFrame:(CGRect)frame {
@@ -298,7 +300,7 @@
 - (IBAction)handleSingleTap:(id)sender {
   [self setControlsHidden:!self.isControlsHidden];
   if (!self.isControlsHidden) {
-    self.controlHideCountdown = kPlayerControlsAutoHideTime;
+    self.controlHideCountdown = [self.playerControlsAutoHideTime integerValue];
   }
   [self.delegate playerViewSingleTapped];
 }
