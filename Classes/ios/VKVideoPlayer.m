@@ -416,10 +416,6 @@ typedef enum {
   }
   [self clearPlayer];
   
-  if (!track.isVideoLoadedBefore) {
-    track.isVideoLoadedBefore = YES;
-  }
-
   NSURL *streamURL = [track streamURL];
   if (!streamURL) {
     return;
@@ -429,6 +425,11 @@ typedef enum {
 }
 
 - (void)playOnAVPlayer:(NSURL*)streamURL playerLayerView:(VKVideoPlayerLayerView*)playerLayerView track:(id<VKVideoPlayerTrackProtocol>)track {
+
+  if (!track.isVideoLoadedBefore) {
+    track.isVideoLoadedBefore = YES;
+  }
+
   AVURLAsset* asset = [[AVURLAsset alloc] initWithURL:streamURL options:@{ AVURLAssetPreferPreciseDurationAndTimingKey : @YES }];
   [asset loadValuesAsynchronouslyForKeys:@[kTracksKey, kPlayableKey] completionHandler:^{
     // Completion handler block.
