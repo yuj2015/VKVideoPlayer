@@ -775,11 +775,6 @@ typedef enum {
 
 
 - (void)setState:(VKVideoPlayerState)newPlayerState {
-  if ([self.delegate respondsToSelector:@selector(shouldVideoPlayer:changeStateTo:)]) {
-    if (![self.delegate shouldVideoPlayer:self changeStateTo:newPlayerState]) {
-      return;
-    }
-  }
   RUN_ON_UI_THREAD(^{
     if ([self.delegate respondsToSelector:@selector(videoPlayer:willChangeStateTo:)]) {
       [self.delegate videoPlayer:self willChangeStateTo:newPlayerState];
@@ -944,6 +939,9 @@ typedef enum {
 }
 
 - (void)dismiss {
+  if (self.state == VKVideoPlayerStateContentPlaying) {
+    [self pauseContent];
+  }
   self.state = VKVideoPlayerStateDismissed;
 }
 
