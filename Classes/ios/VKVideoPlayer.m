@@ -686,12 +686,20 @@ typedef enum {
   
   if (object == self.playerItem) {
     if ([keyPath isEqualToString:@"playbackBufferEmpty"]) {
+        if (self.playerItem.isPlaybackBufferEmpty && [self.delegate respondsToSelector:@selector(videoPlayer:isBuffering:)]) {
+            [self.delegate videoPlayer:self isBuffering:YES];
+        }
+        
       DDLogVerbose(@"playbackBufferEmpty: %@", self.playerItem.isPlaybackBufferEmpty ? @"yes" : @"no");
       if (self.playerItem.isPlaybackBufferEmpty && [self currentTime] > 0 && [self currentTime] < [self.player currentItemDuration] - 1 && self.state == VKVideoPlayerStateContentPlaying) {
         [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerPlaybackBufferEmpty object:nil];
       }
     }
     if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
+        if (self.playerItem.playbackLikelyToKeepUp && [self.delegate respondsToSelector:@selector(videoPlayer:isBuffering:)]) {
+            [self.delegate videoPlayer:self isBuffering:NO];
+        }
+        
       DDLogVerbose(@"playbackLikelyToKeepUp: %@", self.playerItem.playbackLikelyToKeepUp ? @"yes" : @"no");
       if (self.playerItem.playbackLikelyToKeepUp) {
         if (self.state == VKVideoPlayerStateContentPlaying && ![self isPlayingVideo]) {
