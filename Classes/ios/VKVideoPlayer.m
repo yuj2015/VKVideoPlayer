@@ -12,7 +12,6 @@
 #import "NSObject+VKFoundation.h"
 #import "VKVideoPlayerExternalMonitor.h"
 
-
 #define VKCaptionPadding 10
 #define degreesToRadians(x) (M_PI * x / 180.0f)
 
@@ -26,7 +25,6 @@ NSString *kTracksKey		= @"tracks";
 NSString *kPlayableKey		= @"playable";
 
 static const NSString *ItemStatusContext;
-
 
 typedef enum {
   VKVideoPlayerCaptionPositionTop = 1111,
@@ -447,6 +445,12 @@ typedef enum {
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
         
+        [[NSNotificationCenter defaultCenter]
+         addObserver:self
+         selector:@selector(contentDidFinishPlaying)
+         name:AVPlayerItemDidPlayToEndTimeNotification
+         object:self.playerItem];
+        
       } else {
         // You should deal with the error appropriately.
         [self handleErrorCode:kVideoPlayerErrorAssetLoadError track:track];
@@ -472,6 +476,7 @@ typedef enum {
           }
           [self seekToLastWatchedDuration];
         }];
+        
         break;
       }
       default:
@@ -1284,16 +1289,14 @@ typedef enum {
   switch (deviceOrientation) {
     case UIInterfaceOrientationPortrait:
       return 0;
-      break;
     case UIInterfaceOrientationLandscapeRight:
       return 90;
-      break;
     case UIInterfaceOrientationLandscapeLeft:
       return -90;
-      break;
     case UIInterfaceOrientationPortraitUpsideDown:
       return 180;
-      break;
+    default:
+      return 0;
   }
 }
 
@@ -1318,6 +1321,5 @@ typedef enum {
 - (CMTime)currentCMTime {
   return [self currentTime];
 }
-
 @end
 

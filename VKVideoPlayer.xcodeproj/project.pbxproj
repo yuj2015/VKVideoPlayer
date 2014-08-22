@@ -67,6 +67,12 @@
 		1BB9D35918FBFEF300568286 /* testCaptionTop.srt in Resources */ = {isa = PBXBuildFile; fileRef = 1BB9D35818FBFEF300568286 /* testCaptionTop.srt */; };
 		1BB9D35A18FBFEF400568286 /* testCaptionTop.srt in Resources */ = {isa = PBXBuildFile; fileRef = 1BB9D35818FBFEF300568286 /* testCaptionTop.srt */; };
 		1BF1CCDB1903A8660006FBC8 /* DemoRootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1BF1CCDA1903A8660006FBC8 /* DemoRootViewController.m */; };
+		273657A5199B6695002C84B4 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657A4199B6695002C84B4 /* AVFoundation.framework */; };
+		273657A7199B669F002C84B4 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657A6199B669F002C84B4 /* AudioToolbox.framework */; };
+		273657A9199B66AA002C84B4 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657A8199B66AA002C84B4 /* CoreMedia.framework */; };
+		273657AB199B66B5002C84B4 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657AA199B66B5002C84B4 /* SystemConfiguration.framework */; };
+		273657AD199B6773002C84B4 /* AdSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657AC199B6773002C84B4 /* AdSupport.framework */; };
+		273657AF199B6779002C84B4 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 273657AE199B6779002C84B4 /* QuartzCore.framework */; };
 		D1C3D9DF54424BFB8D408C64 /* libPods-VKVideoPlayerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 150BEB98AFEA4FF199BA4AA6 /* libPods-VKVideoPlayerTests.a */; };
 /* End PBXBuildFile section */
 
@@ -155,6 +161,12 @@
 		1BB9D35818FBFEF300568286 /* testCaptionTop.srt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 2; path = testCaptionTop.srt; sourceTree = "<group>"; };
 		1BF1CCD91903A8660006FBC8 /* DemoRootViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoRootViewController.h; sourceTree = "<group>"; };
 		1BF1CCDA1903A8660006FBC8 /* DemoRootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoRootViewController.m; sourceTree = "<group>"; };
+		273657A4199B6695002C84B4 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
+		273657A6199B669F002C84B4 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
+		273657A8199B66AA002C84B4 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
+		273657AA199B66B5002C84B4 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = System/Library/Frameworks/SystemConfiguration.framework; sourceTree = SDKROOT; };
+		273657AC199B6773002C84B4 /* AdSupport.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AdSupport.framework; path = System/Library/Frameworks/AdSupport.framework; sourceTree = SDKROOT; };
+		273657AE199B6779002C84B4 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
 		348E1BD9B136464CB42DDFDD /* Pods-VKVideoPlayerTests.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VKVideoPlayerTests.xcconfig"; path = "Pods/Pods-VKVideoPlayerTests.xcconfig"; sourceTree = "<group>"; };
 		D92486162E1943FAB9D33A36 /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -164,6 +176,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				273657AF199B6779002C84B4 /* QuartzCore.framework in Frameworks */,
+				273657AD199B6773002C84B4 /* AdSupport.framework in Frameworks */,
+				273657AB199B66B5002C84B4 /* SystemConfiguration.framework in Frameworks */,
+				273657A9199B66AA002C84B4 /* CoreMedia.framework in Frameworks */,
+				273657A7199B669F002C84B4 /* AudioToolbox.framework in Frameworks */,
+				273657A5199B6695002C84B4 /* AVFoundation.framework in Frameworks */,
 				1BB6ADBD18EE626A00767FA3 /* CoreGraphics.framework in Frameworks */,
 				1BB6ADBF18EE626A00767FA3 /* UIKit.framework in Frameworks */,
 				1BB6ADBB18EE626A00767FA3 /* Foundation.framework in Frameworks */,
@@ -251,6 +269,12 @@
 		1BB6ADB918EE626A00767FA3 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				273657AE199B6779002C84B4 /* QuartzCore.framework */,
+				273657AC199B6773002C84B4 /* AdSupport.framework */,
+				273657AA199B66B5002C84B4 /* SystemConfiguration.framework */,
+				273657A8199B66AA002C84B4 /* CoreMedia.framework */,
+				273657A6199B669F002C84B4 /* AudioToolbox.framework */,
+				273657A4199B6695002C84B4 /* AVFoundation.framework */,
 				1BB6ADBA18EE626A00767FA3 /* Foundation.framework */,
 				1BB6ADBC18EE626A00767FA3 /* CoreGraphics.framework */,
 				1BB6ADBE18EE626A00767FA3 /* UIKit.framework */,

@@ -63,6 +63,7 @@ typedef enum {
 
 
 @class VKVideoPlayer;
+
 @protocol VKVideoPlayerDelegate <NSObject>
 @optional
 - (BOOL)shouldVideoPlayer:(VKVideoPlayer*)videoPlayer changeStateTo:(VKVideoPlayerState)toState;
@@ -105,6 +106,7 @@ typedef enum {
 @interface VKVideoPlayer : NSObject<
 VKVideoPlayerViewDelegate
 >
+
 @property (nonatomic, strong) VKVideoPlayerView *view;
 @property (nonatomic, strong) id<VKVideoPlayerTrackProtocol> track;
 @property (nonatomic, weak) id<VKVideoPlayerDelegate> delegate;
@@ -125,7 +127,6 @@ VKVideoPlayerViewDelegate
 @property (nonatomic, assign) CGRect portraitFrame;
 @property (nonatomic, assign) CGRect landscapeFrame;
 @property (nonatomic, assign) BOOL forceRotate;
-
 
 - (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView;
 

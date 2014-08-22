@@ -77,8 +77,10 @@ typedef enum {
   [self presentModalViewController:viewController animated:YES];
   
   if ([viewController isKindOfClass:[VKVideoPlayerViewController class]]) {
+    NSString *contentURL = @"http://content.viki.com/1028803v/m3u8_1402180237.m3u8?app=100004a&t=1407917182&sig=d55c13ab8c5c02f0454b5b59a740ae74639e037f";
     VKVideoPlayerViewController *videoController = (VKVideoPlayerViewController*)viewController;
-    [videoController playVideoWithStreamURL:[NSURL URLWithString:@"http://localhost:12345/ios_240.m3u8"]];
+    [videoController playVideoWithStreamURL:[NSURL URLWithString:contentURL]];
+//    [videoController playVideoWithStreamURL:[NSURL URLWithString:@"http://localhost:12345/ios_240.m3u8"]];
     [videoController setSubtitle:[self testCaption:@"testCaptionBottom"]];
     
     [videoController.player setCaptionToTop:[self testCaption:@"testCaptionTop"]];
