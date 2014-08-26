@@ -4,9 +4,9 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "VKVideoPlayerView.h"
 #import "VKVideoPlayerCaption.h"
 #import "VKVideoPlayerTrack.h"
+#import "VKScrubber.h"
 
 typedef enum {
   // The video was flagged as blocked due to licensing restrictions (geo or device).
@@ -65,20 +65,22 @@ typedef enum {
 
 
 @class VKVideoPlayer;
+@class VKVideoPlayerLayerView;
+
 @protocol VKVideoPlayerDelegate <NSObject>
 @optional
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer willChangeStateTo:(VKVideoPlayerState)toState;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didChangeStateFrom:(VKVideoPlayerState)fromState;
-- (BOOL)shouldVideoPlayer:(VKVideoPlayer*)videoPlayer startVideo:(id<VKVideoPlayerTrackProtocol>)track;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer willStartVideo:(id<VKVideoPlayerTrackProtocol>)track;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didStartVideo:(id<VKVideoPlayerTrackProtocol>)track;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer willChangeStateTo:(VKVideoPlayerState)toState;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didChangeStateFrom:(VKVideoPlayerState)fromState;
+- (BOOL)shouldVideoPlayer:(VKVideoPlayer *)videoPlayer startVideo:(id<VKVideoPlayerTrackProtocol>)track;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer willStartVideo:(id<VKVideoPlayerTrackProtocol>)track;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didStartVideo:(id<VKVideoPlayerTrackProtocol>)track;
 
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didPlayFrame:(id<VKVideoPlayerTrackProtocol>)track time:(NSTimeInterval)time lastTime:(NSTimeInterval)lastTime;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didPlayToEnd:(id<VKVideoPlayerTrackProtocol>)track;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didControlByEvent:(VKVideoPlayerControlEvent)event;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didChangeSubtitleFrom:(NSString*)fronLang to:(NSString*)toLang;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer willChangeOrientationTo:(UIInterfaceOrientation)orientation;
-- (void)videoPlayer:(VKVideoPlayer*)videoPlayer didChangeOrientationFrom:(UIInterfaceOrientation)orientation;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didPlayFrame:(id<VKVideoPlayerTrackProtocol>)track time:(NSTimeInterval)time lastTime:(NSTimeInterval)lastTime;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didPlayToEnd:(id<VKVideoPlayerTrackProtocol>)track;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didControlByEvent:(VKVideoPlayerControlEvent)event;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didChangeSubtitleFrom:(NSString*)fronLang to:(NSString*)toLang;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer willChangeOrientationTo:(UIInterfaceOrientation)orientation;
+- (void)videoPlayer:(VKVideoPlayer *)videoPlayer didChangeOrientationFrom:(UIInterfaceOrientation)orientation;
 
 - (void)handleErrorCode:(VKVideoPlayerErrorCode)errorCode track:(id<VKVideoPlayerTrackProtocol>)track customMessage:(NSString*)customMessage;
 @end
@@ -86,6 +88,32 @@ typedef enum {
 
 @protocol VKVideoPlayerExternalMonitorProtocol;
 
+@protocol VKVideoPlayerViewDelegate <VKScrubberDelegate>
+@property (nonatomic, readonly) VKVideoPlayerTrack * videoTrack;
+@property (nonatomic, readonly) UIInterfaceOrientation visibleInterfaceOrientation;
+
+- (void)fullScreenButtonTapped;
+- (void)playButtonPressed;
+- (void)pauseButtonPressed;
+
+- (void)captionButtonTapped;
+- (void)videoQualityButtonTapped;
+
+- (void)doneButtonTapped;
+
+- (void)playerViewSingleTapped;
+
+- (void)scrubbingBegin;
+- (void)scrubbingEnd;
+@end
+
+@protocol VKVideoPlayerViewInterface <NSObject>
+
+@property (strong, nonatomic) VKVideoPlayerLayerView *playerLayerView;
+@property (strong, nonatomic) DTAttributedLabel* subtitleLabel;
+@property (weak, nonatomic) id<VKVideoPlayerViewDelegate> delegate;
+- (void)prepareView;
+@end
 
 @protocol VKPlayer <NSObject>
 - (void)play;
@@ -106,7 +134,7 @@ typedef enum {
 @interface VKVideoPlayer : NSObject<
 VKVideoPlayerViewDelegate
 >
-@property (nonatomic, strong) VKVideoPlayerView *view;
+@property (nonatomic, strong) id<VKVideoPlayerViewInterface> view;
 @property (nonatomic, strong) id<VKVideoPlayerTrackProtocol> track;
 @property (nonatomic, weak) id<VKVideoPlayerDelegate> delegate;
 @property (nonatomic, assign) VKVideoPlayerState state;
@@ -129,7 +157,7 @@ VKVideoPlayerViewDelegate
 
 @property (nonatomic, assign) BOOL isReadyToPlay;
 
-- (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView;
+- (id)initWithVideoPlayerView:(id<VKVideoPlayerViewInterface>)videoPlayerView;
 
 - (void)seekToLastWatchedDuration;
 - (void)seekToTimeInSecond:(float)sec userAction:(BOOL)isUserAction completionHandler:(void (^)(BOOL finished))completionHandler;
@@ -146,7 +174,7 @@ VKVideoPlayerViewDelegate
 - (void)loadVideoWithStreamURL:(NSURL*)streamURL;
 - (void)reloadCurrentVideoTrack;
 - (void)initPlayerWithTrack:(id<VKVideoPlayerTrackProtocol>)track;
-- (VKVideoPlayerView*)activePlayerView;
+- (id<VKVideoPlayerViewInterface>)activePlayerView;
 
 #pragma mark - Controls
 - (void)playContent;
@@ -159,11 +187,11 @@ VKVideoPlayerViewDelegate
 #pragma mark - Captions
 - (void)clearCaptions;
 - (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption;
-- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView;
+- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
 - (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption;
-- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView;
+- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
 
-- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView;
+- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
 - (void)clearCaptionView:(DTAttributedLabel*)captionView;
 
 #pragma mark - Ad State Support

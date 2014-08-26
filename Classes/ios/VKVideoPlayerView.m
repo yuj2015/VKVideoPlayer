@@ -33,8 +33,6 @@
 - (void)dealloc {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   [self.scrubber removeObserver:self forKeyPath:@"maximumValue"];
-  [self.rewindButton removeObserver:self forKeyPath:@"hidden"];
-  [self.nextButton removeObserver:self forKeyPath:@"hidden"];
 }
 
 - (void)initialize {
@@ -46,16 +44,9 @@
   self.view.frame = self.frame;
   self.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
   [self addSubview:self.view];
-  
-  self.titleLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(22.0f, 14.0f));
-  self.titleLabel.textColor = THEMECOLOR(@"colorFont4");
-  self.titleLabel.text = @"";
 
   self.captionButton.titleLabel.font = THEMEFONT(@"fontRegular", 13.0f);
   [self.captionButton setTitleColor:THEMECOLOR(@"colorFont4") forState:UIControlStateNormal];
-
-  self.videoQualityButton.titleLabel.font = THEMEFONT(@"fontRegular", 13.0f);
-  [self.videoQualityButton setTitleColor:THEMECOLOR(@"colorFont4") forState:UIControlStateNormal];
   
   self.currentTimeLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(16.0f, 10.0f));
   self.currentTimeLabel.textColor = THEMECOLOR(@"colorFont4");
@@ -70,40 +61,28 @@
   
   [self.scrubber addTarget:self action:@selector(updateTimeLabels) forControlEvents:UIControlEventValueChanged];
     
-  UIView* overlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.bottomControlOverlay.frame.size.width, self.bottomControlOverlay.frame.size.height)];
+  UIView* overlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.bottomControls.frame.size.width, self.bottomControls.frame.size.height)];
   overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth;
   overlay.backgroundColor = THEMECOLOR(@"colorBackground8");
   overlay.alpha = 0.6f;
-  [self.bottomControlOverlay addSubview:overlay];
-  [self.bottomControlOverlay sendSubviewToBack:overlay];
-
-  overlay = [[UIView alloc] initWithFrame:self.topControlOverlay.frame];
-  overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-  overlay.backgroundColor = THEMECOLOR(@"colorBackground8");
-  overlay.alpha = 0.6f;
-  [self.topControlOverlay addSubview:overlay];
-  [self.topControlOverlay sendSubviewToBack:overlay];
+  [self.bottomControls addSubview:overlay];
+  [self.bottomControls sendSubviewToBack:overlay];
   
   [self.captionButton setTitle:[VKSharedVideoPlayerSettingsManager.subtitleLanguageCode uppercaseString] forState:UIControlStateNormal];
   
-  [self.videoQualityButton setTitle:[VKSharedVideoPlayerSettingsManager videoQualityShortDescription:[VKSharedVideoPlayerSettingsManager streamKey]] forState:UIControlStateNormal];
-  
   self.externalDeviceLabel.adjustsFontSizeToFitWidth = YES;
-  
-  [self.rewindButton addObserver:self forKeyPath:@"hidden" options:0 context:nil];
-  [self.nextButton addObserver:self forKeyPath:@"hidden" options:0 context:nil];
   
   self.fullscreenButton.hidden = NO;  
   
   for (UIButton* button in @[
-    self.topPortraitCloseButton
+    self.doneButton
   ]) {
     [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
     button.layer.cornerRadius = 4.0f;
     button.clipsToBounds = YES;
   }
   
-  [self.topPortraitCloseButton addTarget:self action:@selector(doneButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
+  [self.doneButton addTarget:self action:@selector(doneButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
   
 //  [self layoutForOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
 }
@@ -125,8 +104,12 @@
   [super layoutSubviews];
 }
 
-#pragma - VKVideoPlayerViewDelegates
-
+- (void)prepareView {
+  [self setPlayButtonsSelected:NO];
+  [self.scrubber setValue:0.0f animated:NO];
+  self.controlHideCountdown = kPlayerControlsAutoHideTime;
+}
+#pragma mark - UI Controls
 - (IBAction)playButtonTapped:(id)sender {
 
   UIButton* playButton;
@@ -143,18 +126,6 @@
   }
 }
 
-- (IBAction)nextTrackButtonPressed:(id)sender {
-  [self.delegate nextTrackButtonPressed];
-}
-
-- (IBAction)previousTrackButtonPressed:(id)sender {
-  [self.delegate previousTrackButtonPressed];
-}
-
-- (IBAction)rewindButtonPressed:(id)sender {
-  [self.delegate rewindButtonPressed];
-}
-
 - (IBAction)fullscreenButtonTapped:(id)sender {
   self.fullscreenButton.selected = !self.fullscreenButton.selected;
   [self.delegate fullScreenButtonTapped];
@@ -162,10 +133,6 @@
 
 - (IBAction)captionButtonTapped:(id)sender {
   [self.delegate captionButtonTapped];
-}
-
-- (IBAction)videoQualityButtonTapped:(id)sender {
-  [self.delegate videoQualityButtonTapped];
 }
 
 - (IBAction)doneButtonTapped:(id)sender {
@@ -183,12 +150,12 @@
     }
   }
   
-  if ([object isKindOfClass:[UIButton class]]) {
-    UIButton* button = object;
-    if ([button isDescendantOfView:self.topControlOverlay]) {
-      [self layoutTopControls];
-    }
-  }
+//  if ([object isKindOfClass:[UIButton class]]) {
+//    UIButton* button = object;
+//    if ([button isDescendantOfView:self.topControlOverlay]) {
+//      [self layoutTopControls];
+//    }
+//  }
 }
 
 - (void)setDelegate:(id<VKVideoPlayerViewDelegate>)delegate {
@@ -223,11 +190,11 @@
   
   self.currentTimeLabel.text = [VKSharedUtility timeStringFromSecondsValue:(int)self.scrubber.value];
   [self.currentTimeLabel sizeToFit];
-  [self.currentTimeLabel setFrameHeight:CGRectGetHeight(self.bottomControlOverlay.frame)];
+  [self.currentTimeLabel setFrameHeight:CGRectGetHeight(self.bottomControls.frame)];
   
   self.totalTimeLabel.text = [VKSharedUtility timeStringFromSecondsValue:(int)self.scrubber.maximumValue];
   [self.totalTimeLabel sizeToFit];
-  [self.totalTimeLabel setFrameHeight:CGRectGetHeight(self.bottomControlOverlay.frame)];
+  [self.totalTimeLabel setFrameHeight:CGRectGetHeight(self.bottomControls.frame)];
   
   [self layoutSlider];
 }
@@ -239,8 +206,8 @@
 //    [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.captionButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
 //  }
   
-  CGFloat bottomControlsWidth = self.bottomControlOverlay.frame.size.width;
-  CGFloat bottomControlsHeight = self.bottomControlOverlay.frame.size.height;
+  CGFloat bottomControlsWidth = self.bottomControls.frame.size.width;
+  CGFloat bottomControlsHeight = self.bottomControls.frame.size.height;
   
   CGFloat leftOffset = 0.0f;
   CGFloat rightOffset = bottomControlsWidth;
@@ -264,13 +231,6 @@
     [self.fullscreenButton setFrameOriginX:rightOffset - 4 - self.fullscreenButton.frame.size.width];
     [self.fullscreenButton setFrameOriginY:(bottomControlsHeight - self.fullscreenButton.frame.size.height) / 2];
     rightOffset = CGRectGetMinX(self.fullscreenButton.frame);
-  }
-  
-  // Video Quality Button
-  if (!self.videoQualityButton.hidden) {
-    [self.videoQualityButton setFrameOriginX:rightOffset - 2 - self.videoQualityButton.frame.size.width];
-    [self.videoQualityButton setFrameOriginY:(bottomControlsHeight - self.videoQualityButton.frame.size.height) / 2];
-    rightOffset = CGRectGetMinX(self.videoQualityButton.frame);
   }
   
   // Captions Button
@@ -299,40 +259,21 @@
   [self layoutSliderForOrientation:self.delegate.visibleInterfaceOrientation];
 }
 
-- (void)layoutTopControls {
-  
-  CGFloat rightMargin = CGRectGetMaxX(self.topControlOverlay.frame);
-  for (UIView* button in self.topControlOverlay.subviews) {
-    if ([button isKindOfClass:[UIButton class]] && button != self.doneButton && !button.hidden) {
-      rightMargin = MIN(CGRectGetMinX(button.frame), rightMargin);
-    }
-  }
-  
-  [self.titleLabel setFrameWidth:rightMargin - CGRectGetMinX(self.titleLabel.frame) - 20];
-}
-
 - (void)setPlayButtonsSelected:(BOOL)selected {
   self.playButton.selected = selected;
-  self.bigPlayButton.selected = selected;
 }
 
 - (void)setPlayButtonsEnabled:(BOOL)enabled {
   self.playButton.enabled = enabled;
-  self.bigPlayButton.enabled = enabled;
 }
 
 - (void)setControlsEnabled:(BOOL)enabled {
   
   self.captionButton.enabled = enabled;
-  self.videoQualityButton.enabled = enabled;
-  self.topSettingsButton.enabled = enabled;
   
   [self setPlayButtonsEnabled:enabled];
-
-  self.previousButton.enabled = enabled && self.delegate.videoTrack.hasPrevious;
-  self.nextButton.enabled = enabled && self.delegate.videoTrack.hasNext;
+  
   self.scrubber.enabled = enabled;
-  self.rewindButton.enabled = enabled;
   self.fullscreenButton.enabled = enabled;
   
   self.isControlsEnabled = enabled;
@@ -354,14 +295,6 @@
     self.controlHideCountdown = kPlayerControlsAutoHideTime;
   }
   [self.delegate playerViewSingleTapped];
-}
-
-- (IBAction)handleSwipeLeft:(id)sender {
-  [self.delegate nextTrackBySwipe];
-}
-
-- (IBAction)handleSwipeRight:(id)sender {
-  [self.delegate previousTrackBySwipe];
 }
 
 - (void)setControlHideCountdown:(NSInteger)controlHideCountdown {
@@ -413,8 +346,6 @@
       control.hidden = hidden;
     }
   }
-  
-  [self layoutTopControls];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
@@ -428,16 +359,9 @@
 
 - (void)layoutForOrientation:(UIInterfaceOrientation)interfaceOrientation {
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
-    self.topControlOverlay.hidden = YES;
-    self.topPortraitControlOverlay.hidden = NO;
+//    self.captionButton.hidden = YES;
     
-    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2];
-    self.buttonPlaceHolderView.hidden = YES;
-    
-    self.captionButton.hidden = YES;
-    self.videoQualityButton.hidden = YES;
-    
-    [self.bigPlayButton setFrameOriginY:CGRectGetMinY(self.bottomControlOverlay.frame)/2 - CGRectGetHeight(self.bigPlayButton.frame)/2];
+    [self.playButton setFrameOriginY:CGRectGetMinY(self.bottomControls.frame)/2 - CGRectGetHeight(self.playButton.frame)/2];
     
     for (UIView *control in self.portraitControls) {
       control.hidden = self.isControlsHidden;
@@ -447,17 +371,9 @@
     }
     
   } else {
-    [self.topControlOverlay setFrameOriginY:0.0f];
-    self.topControlOverlay.hidden = NO;
-    self.topPortraitControlOverlay.hidden = YES;
-    
-    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2 + CGRectGetMaxY(self.topControlOverlay.frame)];
-    self.buttonPlaceHolderView.hidden = NO;
-    
-    self.captionButton.hidden = NO;
-    self.videoQualityButton.hidden = NO;
+//    self.captionButton.hidden = NO;
 
-    [self.bigPlayButton setFrameOriginY:(CGRectGetMinY(self.bottomControlOverlay.frame) - CGRectGetMaxY(self.topControlOverlay.frame))/2 + CGRectGetMaxY(self.topControlOverlay.frame) - CGRectGetHeight(self.bigPlayButton.frame)/2];
+    [self.playButton setFrameOriginY:CGRectGetMinY(self.bottomControls.frame)/2 - CGRectGetHeight(self.playButton.frame)/2];
     
     for (UIView *control in self.portraitControls) {
       control.hidden = YES;
@@ -467,32 +383,7 @@
     }
   }
   
-  [self layoutTopControls];
   [self layoutSliderForOrientation:interfaceOrientation];
-}
-
-- (void)addSubviewForControl:(UIView *)view {
-  [self addSubviewForControl:view toView:self];
-}
-- (void)addSubviewForControl:(UIView *)view toView:(UIView*)parentView {
-  [self addSubviewForControl:view toView:parentView forOrientation:UIInterfaceOrientationMaskAll];
-}
-- (void)addSubviewForControl:(UIView *)view toView:(UIView*)parentView forOrientation:(UIInterfaceOrientationMask)orientation {
-  view.hidden = self.isControlsHidden;
-  if (orientation == UIInterfaceOrientationMaskAll) {
-    [self.customControls addObject:view];
-  } else if (orientation == UIInterfaceOrientationMaskPortrait) {
-    [self.portraitControls addObject:view];
-  } else if (orientation == UIInterfaceOrientationMaskLandscape) {
-    [self.landscapeControls addObject:view];
-  }
-  [parentView addSubview:view];
-}
-- (void)removeControlView:(UIView*)view {
-  [view removeFromSuperview];
-  [self.customControls removeObject:view];
-  [self.landscapeControls removeObject:view];
-  [self.portraitControls removeObject:view];
 }
 
 @end

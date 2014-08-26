@@ -11,6 +11,7 @@
 #import "VKVideoPlayerTrack.h"
 #import "NSObject+VKFoundation.h"
 #import "VKVideoPlayerExternalMonitor.h"
+#import "VKVideoPlayerView.h"
 
 
 #define VKCaptionPadding 10
@@ -61,7 +62,7 @@ typedef enum {
   return self;
 }
 
-- (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView {
+- (id)initWithVideoPlayerView:(id<VKVideoPlayerViewInterface>)videoPlayerView {
   self = [super init];
   if (self) {
     self.view = videoPlayerView;
@@ -111,13 +112,7 @@ typedef enum {
 
 - (void)initializePlayerView {
   self.view.delegate = self;
-  [self.view setPlayButtonsSelected:NO];
-  [self.view.scrubber setValue:0.0f animated:NO];
-  self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
-  
-  if (!self.forceRotate) {
-    self.view.fullscreenButton.hidden = YES;
-  }
+  [self.view prepareView];
 }
 
 - (void)loadCurrentVideoTrack {
@@ -227,9 +222,6 @@ typedef enum {
   if (curReachability == VKSharedUtility.wifiReach) {
     DDLogVerbose(@"Reachability Changed: %@", [VKSharedUtility.wifiReach isReachableViaWiFi] ? @"Wifi Detected." : @"Cellular Detected.");
     [self reloadCurrentVideoTrack];
-    self.view.videoQualityButton.enabled = YES;
-  } else {
-    self.view.videoQualityButton.enabled = NO;
   }
 }
 
@@ -266,8 +258,8 @@ typedef enum {
     NSTimeInterval interval = fabs(timeInSeconds - _previousPlaybackTime);
     if (interval < 2 ) {
       if (self.captionBottom) {
-        VKVideoPlayerView* playerView = [self activePlayerView];
-        [self updateCaptionView:playerView.captionBottomView caption:self.captionBottom playerView:playerView];
+        id<VKVideoPlayerViewInterface> playerView = [self activePlayerView];
+        [self updateCaptionView:playerView.subtitleLabel caption:self.captionBottom playerView:playerView];
       }
     }
 
@@ -1198,7 +1190,7 @@ typedef enum {
   return MAX(padding, 0.0f);
 }
 
-- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView {
+- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView {
   float timeInSeconds = CMTimeGetSeconds([self.player currentCMTime]);
   float timeInMilliseconds = timeInSeconds * 1000;
   NSString* html = [caption contentAtTime:timeInMilliseconds];
