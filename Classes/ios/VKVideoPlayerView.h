@@ -45,6 +45,9 @@
 @property (strong, nonatomic) IBOutlet UIImageView* externalDeviceImageView;
 @property (strong, nonatomic) IBOutlet UILabel* externalDeviceLabel;
 
+@property (assign, nonatomic) CGRect portraitFrame;
+@property (assign, nonatomic) CGRect landscapeFrame;
+
 - (IBAction)fullscreenButtonTapped:(id)sender;
 - (IBAction)playButtonTapped:(id)sender;
 

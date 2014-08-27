@@ -89,7 +89,7 @@ typedef enum {
 @protocol VKVideoPlayerExternalMonitorProtocol;
 
 @protocol VKVideoPlayerViewDelegate <VKScrubberDelegate>
-@property (nonatomic, readonly) VKVideoPlayerTrack * videoTrack;
+@property (nonatomic, readonly) VKVideoPlayerTrack *videoTrack;
 @property (nonatomic, readonly) UIInterfaceOrientation visibleInterfaceOrientation;
 
 - (void)fullScreenButtonTapped;
@@ -110,9 +110,40 @@ typedef enum {
 @protocol VKVideoPlayerViewInterface <NSObject>
 
 @property (strong, nonatomic) VKVideoPlayerLayerView *playerLayerView;
-@property (strong, nonatomic) DTAttributedLabel* subtitleLabel;
 @property (weak, nonatomic) id<VKVideoPlayerViewDelegate> delegate;
+@property (assign, nonatomic) NSInteger controlHideCountdown;
+@property (assign, nonatomic) CGRect portraitFrame;
+@property (assign, nonatomic) CGRect landscapeFrame;
+
+// View prep
 - (void)prepareView;
+
+// Auto hide callback
+- (void)hideControlsIfNecessary;
+
+// Play button settings
+- (void)setPlayButtonsSelect:(BOOL)selected;
+- (void)setPlayButtonsEnabled:(BOOL)enabled;
+
+// Scrubber interface
+- (void)setScrubberValue:(float)value animated:(BOOL)animated;
+- (float)getScrubberValue;
+
+// Change view state
+- (void)viewForContentLoading:(BOOL)isPlayingOnExternalDevice;
+- (void)viewForContentPaused:(BOOL)isPlayingOnExternalDevice;
+- (void)viewForContentPlaying:(BOOL)isPlayingOnExternalDevice;
+- (void)viewForSuspended:(BOOL)isPlayingOnExternalDevice;
+- (void)viewForError:(BOOL)isPlayingOnExternalDevice;
+- (void)viewForDismissed:(BOOL)isPlayingOnExternalDevice;
+
+// Loading indicator
+- (void)setLoading:(BOOL)isLoading;
+
+// Subtitles
+- (void)clearSubtitles;
+- (void)updateSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles forTime:(float)time;
+
 @end
 
 @protocol VKPlayer <NSObject>
@@ -134,13 +165,12 @@ typedef enum {
 @interface VKVideoPlayer : NSObject<
 VKVideoPlayerViewDelegate
 >
-@property (nonatomic, strong) id<VKVideoPlayerViewInterface> view;
+@property (nonatomic, strong) UIView<VKVideoPlayerViewInterface> *playerView;
 @property (nonatomic, strong) id<VKVideoPlayerTrackProtocol> track;
 @property (nonatomic, weak) id<VKVideoPlayerDelegate> delegate;
 @property (nonatomic, assign) VKVideoPlayerState state;
 @property (nonatomic, strong) AVPlayer *avPlayer;
 @property (nonatomic, strong) AVPlayerItem* playerItem;
-@property (nonatomic, assign) BOOL playerControlsEnabled;
 @property (nonatomic, strong) id<VKPlayer> player;
 @property (nonatomic, assign) UIInterfaceOrientation visibleInterfaceOrientation;
 @property (nonatomic, assign) UIInterfaceOrientationMask supportedOrientations;
@@ -153,11 +183,11 @@ VKVideoPlayerViewDelegate
 
 @property (nonatomic, assign) CGRect portraitFrame;
 @property (nonatomic, assign) CGRect landscapeFrame;
-@property (nonatomic, assign) BOOL forceRotate;
+//@property (nonatomic, assign) BOOL forceRotate;
 
 @property (nonatomic, assign) BOOL isReadyToPlay;
 
-- (id)initWithVideoPlayerView:(id<VKVideoPlayerViewInterface>)videoPlayerView;
+- (id)initWithVideoPlayerView:(UIView<VKVideoPlayerViewInterface> *)videoPlayerView;
 
 - (void)seekToLastWatchedDuration;
 - (void)seekToTimeInSecond:(float)sec userAction:(BOOL)isUserAction completionHandler:(void (^)(BOOL finished))completionHandler;
@@ -174,25 +204,18 @@ VKVideoPlayerViewDelegate
 - (void)loadVideoWithStreamURL:(NSURL*)streamURL;
 - (void)reloadCurrentVideoTrack;
 - (void)initPlayerWithTrack:(id<VKVideoPlayerTrackProtocol>)track;
-- (id<VKVideoPlayerViewInterface>)activePlayerView;
+- (UIView<VKVideoPlayerViewInterface> *)activePlayerView;
 
 #pragma mark - Controls
 - (void)playContent;
 - (void)pauseContent;
 - (void)pauseContentWithCompletionHandler:(void (^)())completionHandler;
 - (void)pauseContent:(BOOL)isUserAction completionHandler:(void (^)())completionHandler;
-- (void)updateTrackControls;
 - (void)dismiss;
 
 #pragma mark - Captions
 - (void)clearCaptions;
-- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption;
-- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
-- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption;
-- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
-
-- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView;
-- (void)clearCaptionView:(DTAttributedLabel*)captionView;
+- (void)loadSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles;
 
 #pragma mark - Ad State Support
 - (BOOL)beginAdPlayback;

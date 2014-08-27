@@ -14,7 +14,6 @@
 #import "VKVideoPlayerView.h"
 
 
-#define VKCaptionPadding 10
 #define degreesToRadians(x) (M_PI * x / 180.0f)
 
 #ifdef DEBUG
@@ -42,10 +41,8 @@ typedef enum {
 
 @property (nonatomic, strong) id timeObserver;
 
-@property (nonatomic, strong) id<VKVideoPlayerCaptionProtocol> captionTop;
-@property (nonatomic, strong) id<VKVideoPlayerCaptionProtocol> captionBottom;
-@property (nonatomic, strong) id captionTopTimer;
-@property (nonatomic, strong) id captionBottomTimer;
+@property (nonatomic, strong) id<VKVideoPlayerCaptionProtocol> subtitles;
+@property (nonatomic, strong) id subtitleTimer;
 
 
 @end
@@ -56,16 +53,16 @@ typedef enum {
 - (id)init {
   self = [super init];
   if (self) {
-    self.view = [[VKVideoPlayerView alloc] init];
+    self.playerView = [[VKVideoPlayerView alloc] init];
     [self initialize];
   }
   return self;
 }
 
-- (id)initWithVideoPlayerView:(id<VKVideoPlayerViewInterface>)videoPlayerView {
+- (id)initWithVideoPlayerView:(UIView<VKVideoPlayerViewInterface> *)videoPlayerView {
   self = [super init];
   if (self) {
-    self.view = videoPlayerView;
+    self.playerView = videoPlayerView;
     [self initialize];
   }
   return self;
@@ -78,10 +75,8 @@ typedef enum {
   
   self.timeObserver = nil;
   self.avPlayer = nil;
-  self.captionTop = nil;
-  self.captionBottom = nil;
-  self.captionTopTimer = nil;
-  self.captionBottomTimer = nil;
+  self.subtitles = nil;
+  self.subtitleTimer = nil;
   
   self.playerItem = nil;
 
@@ -102,17 +97,14 @@ typedef enum {
   self.previousPlaybackTime = 0;
   self.supportedOrientations = VKSharedUtility.isPad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
 
-  self.forceRotate = NO;
+//  self.forceRotate = NO;
   
-  CGRect bounds = [[UIScreen mainScreen] bounds];
   
-  self.portraitFrame = CGRectMake(0, 0, MIN(bounds.size.width, bounds.size.height), MAX(bounds.size.width, bounds.size.height));
-  self.landscapeFrame = CGRectMake(0, 0, MAX(bounds.size.width, bounds.size.height), MIN(bounds.size.width, bounds.size.height));
 }
 
 - (void)initializePlayerView {
-  self.view.delegate = self;
-  [self.view prepareView];
+  self.playerView.delegate = self;
+  [self.playerView prepareView];
 }
 
 - (void)loadCurrentVideoTrack {
@@ -179,14 +171,9 @@ typedef enum {
   }
 }
 
-- (void)setCaptionBottomTimer:(id)captionBottomTimer {
-  if (_captionBottomTimer) [self.avPlayer removeTimeObserver:_captionBottomTimer];
-  _captionBottomTimer = captionBottomTimer;
-}
-
-- (void)setCaptionTopTimer:(id)captionTopTimer {
-  if (_captionTopTimer) [self.avPlayer removeTimeObserver:_captionTopTimer];
-  _captionTopTimer = captionTopTimer;
+- (void)setSubtitleTimer:(id)captionBottomTimer {
+  if (_subtitleTimer) [self.avPlayer removeTimeObserver:_subtitleTimer];
+  _subtitleTimer = captionBottomTimer;
 }
 
 - (void)addObservers {
@@ -197,14 +184,11 @@ typedef enum {
 
   [defaultCenter addObserver:self selector:@selector(reachabilityChanged:) name:kReachabilityChangedNotification object:nil];
   [defaultCenter addObserver:self selector:@selector(playerItemReadyToPlay) name:kVKVideoPlayerItemReadyToPlay object:nil];
-  [defaultCenter addObserver:self selector:@selector(orientationChanged:) name:UIDeviceOrientationDidChangeNotification object:[UIDevice currentDevice]];
+//  [defaultCenter addObserver:self selector:@selector(orientationChanged:) name:UIDeviceOrientationDidChangeNotification object:[UIDevice currentDevice]];
 
   NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
   [defaults addObserver:self forKeyPath:kVKSettingsSubtitlesEnabledKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
   [defaults addObserver:self forKeyPath:kVKSettingsTopSubtitlesEnabledKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
-  [defaults addObserver:self forKeyPath:kVKSettingsSubtitleLanguageCodeKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
-  [defaults addObserver:self forKeyPath:kVKVideoQualityKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
-  
 }
 
 - (void)removeObservers {
@@ -212,9 +196,81 @@ typedef enum {
   NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
   [defaults removeObserver:self forKeyPath:kVKSettingsSubtitlesEnabledKey];
   [defaults removeObserver:self forKeyPath:kVKSettingsTopSubtitlesEnabledKey];
-  [defaults removeObserver:self forKeyPath:kVKSettingsSubtitleLanguageCodeKey];
-  [defaults removeObserver:self forKeyPath:kVKVideoQualityKey];
   
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+  if (object == [NSUserDefaults standardUserDefaults]) {
+    if ([keyPath isEqualToString:kVKSettingsSubtitlesEnabledKey]) {
+      NSString  *fromLang, *toLang;
+      if ([[change valueForKeyPath:NSKeyValueChangeNewKey] boolValue]) {
+        fromLang = @"null";
+        toLang = VKSharedVideoPlayerSettingsManager.subtitleLanguageCode;
+      } else {
+        self.subtitleTimer = nil;
+        self.subtitles = nil;
+        [self.playerView clearSubtitles];
+        fromLang = VKSharedVideoPlayerSettingsManager.subtitleLanguageCode;
+        toLang = @"null";
+      }
+      
+      if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeSubtitleFrom:to:)]) {
+        [self.delegate videoPlayer:self didChangeSubtitleFrom:fromLang to:toLang];
+      }
+    }
+  }
+  
+  // Observer AVPlayer and AVPlayerItem to determine when media is ready to play
+  if (object == self.avPlayer) {
+    if ([keyPath isEqualToString:@"status"]) {
+      switch ([self.avPlayer status]) {
+        case AVPlayerStatusReadyToPlay:
+          DDLogVerbose(@"AVPlayerStatusReadyToPlay");
+          if (self.playerItem.status == AVPlayerItemStatusReadyToPlay) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerItemReadyToPlay object:nil];
+          }
+          break;
+        case AVPlayerStatusFailed:
+          DDLogVerbose(@"AVPlayerStatusFailed");
+          [self handleErrorCode:kVideoPlayerErrorAVPlayerFail track:self.track];
+        default:
+          break;
+      }
+    }
+  }
+  
+  if (object == self.playerItem) {
+    if ([keyPath isEqualToString:@"playbackBufferEmpty"]) {
+      DDLogVerbose(@"playbackBufferEmpty: %@", self.playerItem.isPlaybackBufferEmpty ? @"yes" : @"no");
+      if (self.playerItem.isPlaybackBufferEmpty && [self currentTime] > 0 && [self currentTime] < [self.player currentItemDuration] - 1 && self.state == VKVideoPlayerStateContentPlaying) {
+        [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerPlaybackBufferEmpty object:nil];
+      }
+    }
+    if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
+      DDLogVerbose(@"playbackLikelyToKeepUp: %@", self.playerItem.playbackLikelyToKeepUp ? @"yes" : @"no");
+      if (self.playerItem.playbackLikelyToKeepUp) {
+        if (self.state == VKVideoPlayerStateContentPlaying && ![self isPlayingVideo]) {
+          [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerPlaybackLikelyToKeepUp object:nil];
+          [self.player play];
+        }
+      }
+    }
+    if ([keyPath isEqualToString:@"status"]) {
+      switch ([self.playerItem status]) {
+        case AVPlayerItemStatusReadyToPlay:
+          DDLogVerbose(@"AVPlayerItemStatusReadyToPlay");
+          if ([self.avPlayer status] == AVPlayerStatusReadyToPlay) {
+            [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerItemReadyToPlay object:nil];
+          }
+          break;
+        case AVPlayerItemStatusFailed:
+          DDLogVerbose(@"AVPlayerItemStatusFailed");
+          [self handleErrorCode:kVideoPlayerErrorAVPlayerItemFail track:self.track];
+        default:
+          break;
+      }
+    }
+  }
 }
 
 - (void)reachabilityChanged:(NSNotification*)notification {
@@ -224,7 +280,6 @@ typedef enum {
     [self reloadCurrentVideoTrack];
   }
 }
-
 
 - (NSString*)observedBitrateBucket:(NSNumber*)observedKbps {
   NSString* observedKbpsString = @"";
@@ -257,9 +312,8 @@ typedef enum {
   if ([self isPlayingVideo]) {
     NSTimeInterval interval = fabs(timeInSeconds - _previousPlaybackTime);
     if (interval < 2 ) {
-      if (self.captionBottom) {
-        id<VKVideoPlayerViewInterface> playerView = [self activePlayerView];
-        [self updateCaptionView:playerView.subtitleLabel caption:self.captionBottom playerView:playerView];
+      if (self.subtitles) {
+        [self.playerView updateSubtitles:self.subtitles forTime:CMTimeGetSeconds([self.player currentCMTime])];
       }
     }
 
@@ -278,7 +332,7 @@ typedef enum {
     [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerDurationDidLoadNotification object:self userInfo:durationInfo];
   }
 
-  [self.view hideControlsIfNecessary];
+  [self.playerView hideControlsIfNecessary];
   
   if ([self.delegate respondsToSelector:@selector(videoPlayer:didPlayFrame:time:lastTime:)]) {
     [self.delegate videoPlayer:self didPlayFrame:self.track time:timeInSeconds lastTime:lastTimeInSeconds];
@@ -300,17 +354,17 @@ typedef enum {
 - (void)seekToLastWatchedDuration {
   RUN_ON_UI_THREAD(^{
     
-    [self.view setPlayButtonsEnabled:NO];
+    [self.playerView setPlayButtonsEnabled:NO];
     
     CGFloat lastWatchedTime = [self.track.lastDurationWatchedInSeconds floatValue];
     if (lastWatchedTime > 5) lastWatchedTime -= 5;
     
     DDLogVerbose(@"Seeking to last watched duration: %f", lastWatchedTime);
-    [self.view.scrubber setValue:([self.player currentItemDuration] > 0) ? lastWatchedTime / [self.player currentItemDuration] : 0.0f animated:NO];
+    [self.playerView setScrubberValue:([self.player currentItemDuration] > 0) ? lastWatchedTime / [self.player currentItemDuration] : 0.0f animated:NO];
     
     [self.player seekToTimeInSeconds:lastWatchedTime completionHandler:^(BOOL finished) {
       if (finished) [self playContent];
-      [self.view setPlayButtonsEnabled:YES];
+      [self.playerView setPlayButtonsEnabled:YES];
       
       if ([self.delegate respondsToSelector:@selector(videoPlayer:didStartVideo:)]) {
         [self.delegate videoPlayer:self didStartVideo:self.track];
@@ -343,11 +397,11 @@ typedef enum {
 
 #pragma mark - Airplay
 
-- (VKVideoPlayerView*)activePlayerView {
+- (UIView<VKVideoPlayerViewInterface> *)activePlayerView {
   if (self.externalMonitor.isConnected) {
     return self.externalMonitor.externalView;
   } else {
-    return self.view;
+    return self.playerView;
   }
 }
 
@@ -387,8 +441,6 @@ typedef enum {
   
   // Load new track and update views
   _track = track;
-  self.view.titleLabel.text = [track title];
-  [self updateTrackControls];
   
   // Post notification once track has been changed
   [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerUpdateVideoTrack object:track];
@@ -513,8 +565,7 @@ typedef enum {
 
 - (void)setAvPlayer:(AVPlayer *)avPlayer {
   self.timeObserver = nil;
-  self.captionTopTimer = nil;
-  self.captionBottomTimer = nil;
+  self.subtitleTimer = nil;
   [_avPlayer removeObserver:self forKeyPath:@"status"];
   _avPlayer = avPlayer;
   if (avPlayer) {
@@ -524,14 +575,11 @@ typedef enum {
       [weakSelf periodicTimeObserver:time];
     }];
     
-    if (self.captionTop) {
-      [self setCaption:self.captionTop toCaptionView:self.activePlayerView.captionTopView playerView:self.activePlayerView];
+    if (self.subtitles) {
+      [self loadSubtitles:self.subtitles];
     }
-    if (self.captionBottom) {
-      [self setCaption:self.captionBottom toCaptionView:self.activePlayerView.captionBottomView playerView:self.activePlayerView];
-    }
-    [self clearCaptionView:self.activePlayerView.captionTopView];
-    [self clearCaptionView:self.activePlayerView.captionBottomView];
+    
+    [self.playerView clearSubtitles];
   }
 }
 
@@ -583,131 +631,24 @@ typedef enum {
 }
 
 #pragma mark - captions
-- (void)clearCaptions {
-  [self setCaptionToTop:nil];
-  [self setCaptionToBottom:nil];
-}
-
-- (void)setCaption:(id<VKVideoPlayerCaptionProtocol>)caption toCaptionView:(DTAttributedLabel*)captionView playerView:(VKVideoPlayerView*)playerView {
-  if (!caption.boundryTimes.count) {
-    [self clearCaptionView:captionView];
-    if (captionView.tag == VKVideoPlayerCaptionPositionTop) {
-      self.captionTopTimer = nil;
-      self.captionTop = nil;
-    } else if (captionView.tag == VKVideoPlayerCaptionPositionBottom) {
-      self.captionBottomTimer = nil;
-      self.captionBottom = nil;
-    }
+- (void)loadSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles {
+  if (!subtitles.boundryTimes.count) {
+    [self.playerView clearSubtitles];
+    self.subtitleTimer = nil;
+    self.subtitles = nil;
     return;
   }
   
-  __weak id weakSelf = self;
-  
-  DDLogVerbose(@"Subs: %@ - segment count %d", caption, (int)caption.segments.count);
-  id captionTimer = [self.avPlayer addBoundaryTimeObserverForTimes:caption.boundryTimes queue:NULL usingBlock:^{
-    [weakSelf updateCaptionView:captionView caption:caption playerView:playerView];
+  __weak __typeof(self) weakSelf = self;
+  DDLogVerbose(@"Subs: %@ - segment count %d", subtitles, (int)subtitles.segments.count);
+  id subtitleTimer = [self.avPlayer addBoundaryTimeObserverForTimes:subtitles.boundryTimes queue:NULL usingBlock:^{
+    [weakSelf.playerView updateSubtitles:subtitles forTime:CMTimeGetSeconds([weakSelf.player currentCMTime])];
   }];
   
-  if (captionView.tag == VKVideoPlayerCaptionPositionTop) {
-    self.captionTopTimer = captionTimer;
-    self.captionTop = caption;
-  } else if (captionView.tag == VKVideoPlayerCaptionPositionBottom) {
-    self.captionBottomTimer = captionTimer;
-    self.captionBottom = caption;
-  }
-  [self updateCaptionView:captionView caption:caption playerView:playerView];
-}
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-  if (object == [NSUserDefaults standardUserDefaults]) {
-    if ([keyPath isEqualToString:kVKSettingsSubtitlesEnabledKey]) {
-      NSString  *fromLang, *toLang;
-      if ([[change valueForKeyPath:NSKeyValueChangeNewKey] boolValue]) {
-        fromLang = @"null";
-        toLang = VKSharedVideoPlayerSettingsManager.subtitleLanguageCode;
-      } else {
-        self.captionBottomTimer = nil;
-        self.captionBottom = nil;
-        [self clearCaptionView:self.view.captionBottomView];
-        fromLang = VKSharedVideoPlayerSettingsManager.subtitleLanguageCode;
-        toLang = @"null";
-      }
-      
-      if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeSubtitleFrom:to:)]) {
-        [self.delegate videoPlayer:self didChangeSubtitleFrom:fromLang to:toLang];
-      }
-    }
-    if ([keyPath isEqualToString:kVKSettingsTopSubtitlesEnabledKey]) {
-      if ([[change valueForKeyPath:NSKeyValueChangeNewKey] boolValue]) {
-//        self.track.topSubtitleEnabled = @YES;
-      } else {
-        self.captionTopTimer = nil;
-        self.captionTop = nil;
-//        self.track.topSubtitleEnabled = @NO;
-        [self clearCaptionView:[self activePlayerView].captionTopView];
-      }
-    }
-    if ([keyPath isEqualToString:kVKSettingsSubtitleLanguageCodeKey]) {
-      [self.view.captionButton setTitle:[VKSharedVideoPlayerSettingsManager.subtitleLanguageCode uppercaseString] forState:UIControlStateNormal];
-    }
-    if ([keyPath isEqualToString:kVKVideoQualityKey]) {
-      [self reloadCurrentVideoTrack];
-      [self.view.videoQualityButton setTitle:[VKSharedVideoPlayerSettingsManager videoQualityShortDescription:[VKSharedVideoPlayerSettingsManager streamKey]] forState:UIControlStateNormal];
-    }
-  }
+  self.subtitleTimer = subtitleTimer;
+  self.subtitles = subtitles;
   
-  
-  // Observer AVPlayer and AVPlayerItem to determine when media is ready to play
-  if (object == self.avPlayer) {
-    if ([keyPath isEqualToString:@"status"]) {
-      switch ([self.avPlayer status]) {
-        case AVPlayerStatusReadyToPlay:
-          DDLogVerbose(@"AVPlayerStatusReadyToPlay");
-          if (self.playerItem.status == AVPlayerItemStatusReadyToPlay) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerItemReadyToPlay object:nil];
-          }
-          break;
-        case AVPlayerStatusFailed:
-          DDLogVerbose(@"AVPlayerStatusFailed");
-          [self handleErrorCode:kVideoPlayerErrorAVPlayerFail track:self.track];
-        default:
-          break;
-      }
-    }
-  }
-  
-  if (object == self.playerItem) {
-    if ([keyPath isEqualToString:@"playbackBufferEmpty"]) {
-      DDLogVerbose(@"playbackBufferEmpty: %@", self.playerItem.isPlaybackBufferEmpty ? @"yes" : @"no");
-      if (self.playerItem.isPlaybackBufferEmpty && [self currentTime] > 0 && [self currentTime] < [self.player currentItemDuration] - 1 && self.state == VKVideoPlayerStateContentPlaying) {
-        [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerPlaybackBufferEmpty object:nil];
-      }
-    }
-    if ([keyPath isEqualToString:@"playbackLikelyToKeepUp"]) {
-      DDLogVerbose(@"playbackLikelyToKeepUp: %@", self.playerItem.playbackLikelyToKeepUp ? @"yes" : @"no");
-      if (self.playerItem.playbackLikelyToKeepUp) {
-        if (self.state == VKVideoPlayerStateContentPlaying && ![self isPlayingVideo]) {
-          [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerPlaybackLikelyToKeepUp object:nil];
-          [self.player play];
-        }
-      }
-    }
-    if ([keyPath isEqualToString:@"status"]) {
-      switch ([self.playerItem status]) {
-        case AVPlayerItemStatusReadyToPlay:
-          DDLogVerbose(@"AVPlayerItemStatusReadyToPlay");
-          if ([self.avPlayer status] == AVPlayerStatusReadyToPlay) {
-            [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerItemReadyToPlay object:nil];
-          }
-          break;
-        case AVPlayerItemStatusFailed:
-          DDLogVerbose(@"AVPlayerItemStatusFailed");
-          [self handleErrorCode:kVideoPlayerErrorAVPlayerItemFail track:self.track];
-        default:
-          break;
-      }
-    }
-  }
+  [self.playerView updateSubtitles:subtitles forTime:CMTimeGetSeconds([self.player currentCMTime])];
 }
 
 #pragma mark - Ad State Support
@@ -777,17 +718,15 @@ typedef enum {
     
     switch (oldPlayerState) {
       case VKVideoPlayerStateContentLoading:
-        [self setLoading:NO];
+        [self.playerView setLoading:NO];
         break;
       case VKVideoPlayerStateContentPlaying:
         break;
       case VKVideoPlayerStateContentPaused:
-        self.view.bigPlayButton.hidden = YES;
         break;
       case VKVideoPlayerStateDismissed:
         break;
       case VKVideoPlayerStateError:
-        self.view.messageLabel.hidden = YES;
         break;
       default:
         break;
@@ -795,48 +734,33 @@ typedef enum {
     
     DDLogVerbose(@"Player State: %@ -> %@", [self playerStateDescription:self.state], [self playerStateDescription:newPlayerState]);
     _state = newPlayerState;
+    BOOL isPlayingOnExternalDevice = [self isPlayingOnExternalDevice];
     
     switch (newPlayerState) {
       case VKVideoPlayerStateUnknown:
         break;
       case VKVideoPlayerStateContentLoading:
-        [self setLoading:YES];
-        self.playerControlsEnabled = NO;
+        [self.playerView setLoading:YES];
+        [self.playerView viewForContentLoading:isPlayingOnExternalDevice];
         break;
       case VKVideoPlayerStateContentPlaying: {
-        self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
-        self.playerControlsEnabled = YES;
-        [self.view setPlayButtonsSelected:NO];
-        self.view.playerLayerView.hidden = NO;
-        self.view.captionBottomView.hidden = NO;
-        self.view.captionTopContainerView.hidden = NO;
-        self.view.messageLabel.hidden = YES;
-        self.view.externalDeviceView.hidden = ![self isPlayingOnExternalDevice];
-      } break;
-      case VKVideoPlayerStateContentPaused:
-        self.playerControlsEnabled = YES;
-        [self.view setPlayButtonsSelected:YES];
-        self.view.playerLayerView.hidden = NO;
-        self.view.captionBottomView.hidden = NO;
-        self.view.captionTopContainerView.hidden = NO;
-        self.track.lastDurationWatchedInSeconds = [NSNumber numberWithFloat:[self currentTime]];
-        self.view.bigPlayButton.hidden = NO;
-        self.view.messageLabel.hidden = YES;
-        self.view.externalDeviceView.hidden = ![self isPlayingOnExternalDevice];
+        [self.playerView viewForContentPlaying:isPlayingOnExternalDevice];
         break;
+      }
+      case VKVideoPlayerStateContentPaused: {
+        self.track.lastDurationWatchedInSeconds = [NSNumber numberWithFloat:[self currentTime]];
+        [self.playerView viewForContentPaused:isPlayingOnExternalDevice];
+        break;
+      }
       case VKVideoPlayerStateSuspended:
+        [self.playerView viewForError:isPlayingOnExternalDevice];
         break;
       case VKVideoPlayerStateError:{
-        self.view.externalDeviceView.hidden = YES;
-        self.view.playerLayerView.hidden = YES;
-        self.playerControlsEnabled = NO;
-        self.view.messageLabel.hidden = NO;
-        self.view.controlHideCountdown = kPlayerControlsDisableAutoHide;
+        [self.playerView viewForError:isPlayingOnExternalDevice];
         break;
       }
       case VKVideoPlayerStateDismissed:
-        self.view.playerLayerView.hidden = YES;
-        self.playerControlsEnabled = NO;
+        [self.playerView viewForDismissed:isPlayingOnExternalDevice];
         [self clearPlayer];
         break;
     }
@@ -875,12 +799,10 @@ typedef enum {
         [self.player pause];
         self.state = VKVideoPlayerStateError;
         return;
-        break;
       case AVPlayerItemStatusUnknown:
         DDLogVerbose(@"Trying to pause content but AVPlayerItemStatusUnknown.");
         self.state = VKVideoPlayerStateUnknown;
         return;
-        break;
       default:
         break;
     }
@@ -916,20 +838,6 @@ typedef enum {
   });
 }
 
-- (void)setPlayerControlsEnabled:(BOOL)enabled {
-  [self.view setControlsEnabled:enabled];
-}
-
-
-- (void)updateTrackControls {
-  RUN_ON_UI_THREAD(^{
-    if (self.view.isControlsEnabled) {
-      self.view.previousButton.enabled = self.track.hasPrevious;
-      self.view.nextButton.enabled = self.track.hasNext;
-    }
-  });
-}
-
 - (void)dismiss {
   if (self.state == VKVideoPlayerStateContentPlaying) {
     [self pauseContent];
@@ -942,7 +850,7 @@ typedef enum {
 - (void)scrubbingBegin {
   [self pauseContent:NO completionHandler:^{
     _scrubbing = YES;
-    self.view.controlHideCountdown = -1;
+    self.playerView.controlHideCountdown = -1;
     _beforeSeek = [self currentTime];
   }];
 }
@@ -950,25 +858,25 @@ typedef enum {
 - (void)scrubbingEnd {
   _scrubbing = NO;
   self.state = VKVideoPlayerStateContentLoading;
-  float afterSeekTime = self.view.scrubber.value;
+  float afterSeekTime = [self.playerView getScrubberValue];
   [self scrubbingEndAtSecond:afterSeekTime userAction:YES completionHandler:^(BOOL finished) {
     if (finished) [self playContent];
   }];
 }
 
-- (void)zoomInPressed {
-  ((AVPlayerLayer *)self.view.layer).videoGravity = AVLayerVideoGravityResizeAspectFill;
-  if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"5"]) {
-    self.view.frame = self.view.frame;
-  }
-}
-
-- (void)zoomOutPressed {
-  ((AVPlayerLayer *)self.view.layer).videoGravity = AVLayerVideoGravityResizeAspect;
-  if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"5"]) {
-    self.view.frame = self.view.frame;
-  }
-}
+//- (void)zoomInPressed {
+//  ((AVPlayerLayer *)self.view.layer).videoGravity = AVLayerVideoGravityResizeAspectFill;
+//  if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"5"]) {
+//    self.view.frame = self.view.frame;
+//  }
+//}
+//
+//- (void)zoomOutPressed {
+//  ((AVPlayerLayer *)self.view.layer).videoGravity = AVLayerVideoGravityResizeAspect;
+//  if ([[[UIDevice currentDevice] systemVersion] hasPrefix:@"5"]) {
+//    self.view.frame = self.view.frame;
+//  }
+//}
 
 #pragma mark - VKVideoPlayerViewDelegate
 - (id<VKVideoPlayerTrackProtocol>)videoTrack {
@@ -982,14 +890,6 @@ typedef enum {
 }
 
 - (void)fullScreenButtonTapped {
-  self.isFullScreen = self.view.fullscreenButton.selected;
-  
-  if (self.isFullScreen) {
-    [self performOrientationChange:UIInterfaceOrientationLandscapeRight];
-  } else {
-    [self performOrientationChange:UIInterfaceOrientationPortrait];
-  }
-  
   if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
     [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventTapFullScreen];
   }
@@ -1021,46 +921,6 @@ typedef enum {
   }
 }
 
-- (void)nextTrackButtonPressed {
-  if (self.track.hasNext) {
-    if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
-      [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventTapNext];
-    }
-  }
-}
-
-- (void)previousTrackButtonPressed {
-  if (self.track.hasPrevious) {
-    if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
-      [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventTapPrevious];
-    }
-  }
-}
-
-- (void)nextTrackBySwipe {
-  if (self.track.hasNext) {
-    if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
-      [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventSwipeNext];
-    }
-  }
-}
-
-- (void)previousTrackBySwipe {
-  if (self.track.hasPrevious) {
-    if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
-      [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventSwipePrevious];
-    }
-  }
-}
-
-- (void)rewindButtonPressed {
-  
-  float seekToTime = [self currentTime] - 30;
-  [self seekToTimeInSecond:seekToTime userAction:YES completionHandler:^(BOOL finished) {
-    if (finished) [self playContent];
-  }];
-}
-
 - (void)doneButtonTapped {
   if ([self.delegate respondsToSelector:@selector(videoPlayer:didControlByEvent:)]) {
     [self.delegate videoPlayer:self didControlByEvent:VKVideoPlayerControlEventTapDone];
@@ -1083,24 +943,10 @@ typedef enum {
   [[UIApplication sharedApplication] setStatusBarOrientation:interfaceOrientation animated:NO];
 }
 
-#pragma mark - Auto hide controls
-
-- (void)setForceRotate:(BOOL)forceRotate {
-  if (_forceRotate != forceRotate) {
-    _forceRotate = forceRotate;
-  }
-  
-  self.view.fullscreenButton.hidden = !self.forceRotate;
-}
-
-- (void)setLoading:(BOOL)loading {
-  [self.view setLoading:loading];
-}
-
 #pragma mark - Handle volume change
 
 - (void)volumeChanged:(NSNotification *)notification {
-  self.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+  self.playerView.controlHideCountdown = kPlayerControlsAutoHideTime;
 }
 
 
@@ -1118,10 +964,10 @@ typedef enum {
       case UIEventSubtypeRemoteControlStop:
         break;
       case UIEventSubtypeRemoteControlNextTrack:
-        [self nextTrackButtonPressed];
+//        [self nextTrackButtonPressed];
         break;
       case UIEventSubtypeRemoteControlPreviousTrack:
-        [self previousTrackButtonPressed];
+//        [self previousTrackButtonPressed];
         break;
       case UIEventSubtypeRemoteControlBeginSeekingForward:
       case UIEventSubtypeRemoteControlBeginSeekingBackward:
@@ -1129,7 +975,8 @@ typedef enum {
         break;
       case UIEventSubtypeRemoteControlEndSeekingForward:
       case UIEventSubtypeRemoteControlEndSeekingBackward:
-        self.view.scrubber.value = receivedEvent.timestamp;
+        [self.playerView setScrubberValue:receivedEvent.timestamp animated:NO];
+//        self.view.scrubber.value = receivedEvent.timestamp;
         [self scrubbingEnd];
         break;
       default:
@@ -1138,207 +985,105 @@ typedef enum {
   }
 }
 
-- (DTCSSStylesheet*)captionStyleSheet:(NSString*)color {
-  float fontSize = 1.3f;
-  float shadowSize = 1.0f;
-  
-  switch ([[VKSharedUtility setting:kVKSettingsSubtitleSizeKey] integerValue]) {
-    case 1:
-      fontSize = 1.5f;
-      break;
-    case 2:
-      fontSize = 2.0f;
-      shadowSize = 1.2f;
-      break;
-    case 3:
-      fontSize = 3.5f;
-      shadowSize = 1.5f;
-      break;
-  }
-  
-  DTCSSStylesheet* stylesheet = [[DTCSSStylesheet alloc] initWithStyleBlock:[NSString stringWithFormat:@"body{\
-    text-align: center;\
-    font-size: %fem;\
-    font-family: Helvetica Neue;\
-    font-weight: bold;\
-    color: %@;\
-    text-shadow: -%fpx -%fpx %fpx #000, %fpx -%fpx %fpx #000, -%fpx %fpx %fpx #000, %fpx %fpx %fpx #000;\
-    vertical-align: bottom;\
-    }", fontSize, color, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize]];
-  return stylesheet;
-}
-
-- (void)clearCaptionView:(DTAttributedLabel*)captionView {
-  [captionView setAttributedString:[[NSAttributedString alloc] initWithHTMLData:[@"" dataUsingEncoding:NSUTF8StringEncoding] options:nil documentAttributes:NULL]];
-}
-
-- (CGFloat)captionPadding:(DTAttributedLabel*)captionView {
-  CGFloat aspectRatio = self.playerItem.presentationSize.width/self.playerItem.presentationSize.height;
-  if (isnan(aspectRatio)) {
-    return 0.0f;
-  }
-  CGFloat activePlayerViewWidth = CGRectGetWidth([self activePlayerView].frame);
-  CGFloat videoHeight = activePlayerViewWidth/aspectRatio;
-  CGFloat padding = (CGRectGetHeight([self activePlayerView].frame) - videoHeight)/2;
-  
-  if ([self activePlayerView] == self.view) {
-    if (captionView.tag == VKVideoPlayerCaptionPositionBottom && !self.view.isControlsHidden) {
-      padding = MAX(CGRectGetHeight(self.view.bottomControlOverlay.frame), padding);
-    }
-  }
-  
-  return MAX(padding, 0.0f);
-}
-
-- (void)updateCaptionView:(DTAttributedLabel*)captionView caption:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(id<VKVideoPlayerViewInterface>)playerView {
-  float timeInSeconds = CMTimeGetSeconds([self.player currentCMTime]);
-  float timeInMilliseconds = timeInSeconds * 1000;
-  NSString* html = [caption contentAtTime:timeInMilliseconds];
-  int padding = VKCaptionPadding;
-  CGFloat extraPadding = [self captionPadding:captionView];
-  NSString* color = nil;
-  if (captionView.tag == VKVideoPlayerCaptionPositionTop) {
-    color = @"#CCC";
-    [captionView setFrameHeight:CGRectGetHeight(playerView.frame)];
-  } else {
-    color = @"#FFF";
-    captionView.frame = CGRectMake(padding, padding, playerView.frame.size.width - padding*2, playerView.frame.size.height - padding - extraPadding);
-  }
-  
-  NSMutableDictionary* options = [NSMutableDictionary dictionaryWithObject:[self captionStyleSheet:color] forKey:DTDefaultStyleSheet];
-  NSAttributedString *string = [[NSAttributedString alloc] initWithHTMLData:[html dataUsingEncoding:NSUTF8StringEncoding] options:options documentAttributes:NULL];
-  captionView.attributedString = string;
-  captionView.isAccessibilityElement = YES;
-  captionView.accessibilityLabel = [html stripHtml];
-  
-  if (captionView.tag == VKVideoPlayerCaptionPositionTop) {
-    [captionView setFrameOriginY:padding + extraPadding];
-    DDLogVerbose(@"Set top caption: %@", [html stripHtml]);
-  } else if (captionView.tag == VKVideoPlayerCaptionPositionBottom) {
-    [captionView sizeToFit];
-    captionView.center = CGPointMake(playerView.frame.size.width * 0.5f, captionView.center.y);
-    [captionView setFrameOriginY:playerView.frame.size.height - captionView.frame.size.height - padding - extraPadding];
-    DDLogVerbose(@"Set bottom caption: %@", [html stripHtml]);
-  }
-  
-  [playerView.captionTopContainerView setFrameHeight:MIN(playerView.captionBottomView.frame.origin.y - padding, playerView.captionTopView.frame.size.height + padding + extraPadding)];
-}
-
-- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption {
-  [self setCaptionToBottom:caption playerView:[self activePlayerView]];
-}
-- (void)setCaptionToBottom:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView {
-  [self setCaption:caption toCaptionView:playerView.captionBottomView playerView:playerView];
-}
-
-- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption {
-  [self setCaptionToTop:caption playerView:[self activePlayerView]];
-}
-- (void)setCaptionToTop:(id<VKVideoPlayerCaptionProtocol>)caption playerView:(VKVideoPlayerView*)playerView {
-  [self setCaption:caption toCaptionView:playerView.captionTopView playerView:playerView];
-}
-
 #pragma mark - Orientation
-- (void)orientationChanged:(NSNotification *)note {
-  UIDevice * device = note.object;
+//- (void)orientationChanged:(NSNotification *)note {
+//  UIDevice * device = note.object;
+//
+//  UIInterfaceOrientation rotateToOrientation;
+//  switch(device.orientation) {
+//    case UIDeviceOrientationPortrait:
+//      DDLogVerbose(@"ORIENTATION: Portrait");
+//      rotateToOrientation = UIInterfaceOrientationPortrait;
+//      break;
+//    case UIDeviceOrientationPortraitUpsideDown:
+//      DDLogVerbose(@"ORIENTATION: PortraitDown");
+//      rotateToOrientation = UIInterfaceOrientationPortraitUpsideDown;
+//      break;
+//    case UIDeviceOrientationLandscapeLeft:
+//      DDLogVerbose(@"ORIENTATION: LandscapeRight");
+//      rotateToOrientation = UIInterfaceOrientationLandscapeRight;
+//      break;
+//    case UIDeviceOrientationLandscapeRight:
+//      DDLogVerbose(@"ORIENTATION: LandscapeLeft");
+//      rotateToOrientation = UIInterfaceOrientationLandscapeLeft;
+//      break;
+//    default:
+//      rotateToOrientation = self.visibleInterfaceOrientation;
+//      break;
+//  }
+//  
+//  if ((1 << rotateToOrientation) & self.supportedOrientations && rotateToOrientation != self.visibleInterfaceOrientation) {
+//    [self performOrientationChange:rotateToOrientation];
+//  }
+//}
 
-  UIInterfaceOrientation rotateToOrientation;
-  switch(device.orientation) {
-    case UIDeviceOrientationPortrait:
-      DDLogVerbose(@"ORIENTATION: Portrait");
-      rotateToOrientation = UIInterfaceOrientationPortrait;
-      break;
-    case UIDeviceOrientationPortraitUpsideDown:
-      DDLogVerbose(@"ORIENTATION: PortraitDown");
-      rotateToOrientation = UIInterfaceOrientationPortraitUpsideDown;
-      break;
-    case UIDeviceOrientationLandscapeLeft:
-      DDLogVerbose(@"ORIENTATION: LandscapeRight");
-      rotateToOrientation = UIInterfaceOrientationLandscapeRight;
-      break;
-    case UIDeviceOrientationLandscapeRight:
-      DDLogVerbose(@"ORIENTATION: LandscapeLeft");
-      rotateToOrientation = UIInterfaceOrientationLandscapeLeft;
-      break;
-    default:
-      rotateToOrientation = self.visibleInterfaceOrientation;
-      break;
-  }
-  
-  if ((1 << rotateToOrientation) & self.supportedOrientations && rotateToOrientation != self.visibleInterfaceOrientation) {
-    [self performOrientationChange:rotateToOrientation];
-  }
-}
-
-- (void)performOrientationChange:(UIInterfaceOrientation)deviceOrientation {
-  if (!self.forceRotate) {
-    return;
-  }
-  if ([self.delegate respondsToSelector:@selector(videoPlayer:willChangeOrientationTo:)]) {
-    [self.delegate videoPlayer:self willChangeOrientationTo:deviceOrientation];
-  }
-  
-  CGFloat degrees = [self degreesForOrientation:deviceOrientation];
-  __weak __typeof__(self) weakSelf = self;
-  UIInterfaceOrientation lastOrientation = self.visibleInterfaceOrientation;
-  self.visibleInterfaceOrientation = deviceOrientation;
-  [UIView animateWithDuration:0.3f animations:^{
-    CGRect bounds = [[UIScreen mainScreen] bounds];
-    CGRect parentBounds;
-    CGRect viewBoutnds;
-    if (UIInterfaceOrientationIsLandscape(deviceOrientation)) {
-      viewBoutnds = CGRectMake(0, 0, CGRectGetWidth(self.landscapeFrame), CGRectGetHeight(self.landscapeFrame));
-      parentBounds = CGRectMake(0, 0, CGRectGetHeight(bounds), CGRectGetWidth(bounds));
-    } else {
-      viewBoutnds = CGRectMake(0, 0, CGRectGetWidth(self.portraitFrame), CGRectGetHeight(self.portraitFrame));
-      parentBounds = CGRectMake(0, 0, CGRectGetWidth(bounds), CGRectGetHeight(bounds));
-    }
-    
-    weakSelf.view.superview.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
-    weakSelf.view.superview.bounds = parentBounds;
-    [weakSelf.view.superview setFrameOriginX:0.0f];
-    [weakSelf.view.superview setFrameOriginY:0.0f];
-    
-    CGRect wvFrame = weakSelf.view.superview.superview.frame;
-    if (wvFrame.origin.y > 0) {
-      wvFrame.size.height = CGRectGetHeight(bounds) ;
-      wvFrame.origin.y = 0;
-      weakSelf.view.superview.superview.frame = wvFrame;
-    }
-    
-    weakSelf.view.bounds = viewBoutnds;
-    [weakSelf.view setFrameOriginX:0.0f];
-    [weakSelf.view setFrameOriginY:0.0f];
-    [weakSelf.view layoutForOrientation:deviceOrientation];
-
-  } completion:^(BOOL finished) {
-    if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeOrientationFrom:)]) {
-      [self.delegate videoPlayer:self didChangeOrientationFrom:lastOrientation];
-    }
-  }];
-  
-  [[UIApplication sharedApplication] setStatusBarOrientation:self.visibleInterfaceOrientation animated:YES];
-  [self updateCaptionView:self.view.captionBottomView caption:self.captionBottom playerView:self.view];
-  [self updateCaptionView:self.view.captionTopView caption:self.captionTop playerView:self.view];
-  self.view.fullscreenButton.selected = self.isFullScreen = UIInterfaceOrientationIsLandscape(deviceOrientation);
-}
-
-- (CGFloat)degreesForOrientation:(UIInterfaceOrientation)deviceOrientation {
-  switch (deviceOrientation) {
-    case UIInterfaceOrientationPortrait:
-      return 0;
-      break;
-    case UIInterfaceOrientationLandscapeRight:
-      return 90;
-      break;
-    case UIInterfaceOrientationLandscapeLeft:
-      return -90;
-      break;
-    case UIInterfaceOrientationPortraitUpsideDown:
-      return 180;
-      break;
-  }
-}
+//- (void)performOrientationChange:(UIInterfaceOrientation)deviceOrientation {
+//
+//  if ([self.delegate respondsToSelector:@selector(videoPlayer:willChangeOrientationTo:)]) {
+//    [self.delegate videoPlayer:self willChangeOrientationTo:deviceOrientation];
+//  }
+//  
+//  CGFloat degrees = [self degreesForOrientation:deviceOrientation];
+//  __weak __typeof__(self) weakSelf = self;
+//  UIInterfaceOrientation lastOrientation = self.visibleInterfaceOrientation;
+//  self.visibleInterfaceOrientation = deviceOrientation;
+//  [UIView animateWithDuration:0.3f animations:^{
+//    CGRect bounds = [[UIScreen mainScreen] bounds];
+//    CGRect parentBounds;
+//    CGRect viewBoutnds;
+//    if (UIInterfaceOrientationIsLandscape(deviceOrientation)) {
+//      viewBoutnds = CGRectMake(0, 0, CGRectGetWidth(self.landscapeFrame), CGRectGetHeight(self.landscapeFrame));
+//      parentBounds = CGRectMake(0, 0, CGRectGetHeight(bounds), CGRectGetWidth(bounds));
+//    } else {
+//      viewBoutnds = CGRectMake(0, 0, CGRectGetWidth(self.portraitFrame), CGRectGetHeight(self.portraitFrame));
+//      parentBounds = CGRectMake(0, 0, CGRectGetWidth(bounds), CGRectGetHeight(bounds));
+//    }
+//    
+//    weakSelf.view.superview.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
+//    weakSelf.view.superview.bounds = parentBounds;
+//    [weakSelf.view.superview setFrameOriginX:0.0f];
+//    [weakSelf.view.superview setFrameOriginY:0.0f];
+//    
+//    CGRect wvFrame = weakSelf.view.superview.superview.frame;
+//    if (wvFrame.origin.y > 0) {
+//      wvFrame.size.height = CGRectGetHeight(bounds) ;
+//      wvFrame.origin.y = 0;
+//      weakSelf.view.superview.superview.frame = wvFrame;
+//    }
+//    
+//    weakSelf.view.bounds = viewBoutnds;
+//    [weakSelf.view setFrameOriginX:0.0f];
+//    [weakSelf.view setFrameOriginY:0.0f];
+//    [weakSelf.view layoutForOrientation:deviceOrientation];
+//
+//  } completion:^(BOOL finished) {
+//    if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeOrientationFrom:)]) {
+//      [self.delegate videoPlayer:self didChangeOrientationFrom:lastOrientation];
+//    }
+//  }];
+//  
+//  [[UIApplication sharedApplication] setStatusBarOrientation:self.visibleInterfaceOrientation animated:YES];
+//  [self updateCaptionView:self.view.captionBottomView caption:self.captionBottom playerView:self.view];
+//  [self updateCaptionView:self.view.captionTopView caption:self.captionTop playerView:self.view];
+//  self.view.fullscreenButton.selected = self.isFullScreen = UIInterfaceOrientationIsLandscape(deviceOrientation);
+//}
+//
+//- (CGFloat)degreesForOrientation:(UIInterfaceOrientation)deviceOrientation {
+//  switch (deviceOrientation) {
+//    case UIInterfaceOrientationPortrait:
+//      return 0;
+//      break;
+//    case UIInterfaceOrientationLandscapeRight:
+//      return 90;
+//      break;
+//    case UIInterfaceOrientationLandscapeLeft:
+//      return -90;
+//      break;
+//    case UIInterfaceOrientationPortraitUpsideDown:
+//      return 180;
+//      break;
+//  }
+//}
 
 @end
 

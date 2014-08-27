@@ -13,8 +13,10 @@
 #import "VKVideoPlayerTrack.h"
 #import "UIImage+VKFoundation.h"
 #import "VKVideoPlayerSettingsManager.h"
+#import "VKVideoPlayerLayerView.h"
 
 #define PADDING 8
+#define VKSubtitlePadding 10
 
 #ifdef DEBUG
   static const int ddLogLevel = LOG_LEVEL_WARN;
@@ -31,12 +33,15 @@
 @implementation VKVideoPlayerView
 
 - (void)dealloc {
-  [[NSNotificationCenter defaultCenter] removeObserver:self];
-  [self.scrubber removeObserver:self forKeyPath:@"maximumValue"];
+  [self removeObservers];
 }
 
 - (void)initialize {
-
+  // Define portrait and landscape frames
+  CGRect bounds = [[UIScreen mainScreen] bounds];
+  self.portraitFrame = CGRectMake(0, 0, MIN(bounds.size.width, bounds.size.height), MAX(bounds.size.width, bounds.size.height));
+  self.landscapeFrame = CGRectMake(0, 0, MAX(bounds.size.width, bounds.size.height), MIN(bounds.size.width, bounds.size.height));
+  
   self.customControls = [NSMutableArray array];
   self.portraitControls = [NSMutableArray array];
   self.landscapeControls = [NSMutableArray array];
@@ -53,12 +58,6 @@
   self.totalTimeLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(16.0f, 10.0f));
   self.totalTimeLabel.textColor = THEMECOLOR(@"colorFont4");
   
-  [self.scrubber addObserver:self forKeyPath:@"maximumValue" options:0 context:nil];
-  
-  NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
-  [defaultCenter addObserver:self selector:@selector(durationDidLoad:) name:kVKVideoPlayerDurationDidLoadNotification object:nil];
-  [defaultCenter addObserver:self selector:@selector(scrubberValueUpdated:) name:kVKVideoPlayerScrubberValueUpdatedNotification object:nil];
-  
   [self.scrubber addTarget:self action:@selector(updateTimeLabels) forControlEvents:UIControlEventValueChanged];
     
   UIView* overlay = [[UIView alloc] initWithFrame:CGRectMake(0, 0, self.bottomControls.frame.size.width, self.bottomControls.frame.size.height)];
@@ -69,6 +68,7 @@
   [self.bottomControls sendSubviewToBack:overlay];
   
   [self.captionButton setTitle:[VKSharedVideoPlayerSettingsManager.subtitleLanguageCode uppercaseString] forState:UIControlStateNormal];
+  [self.captionButton setTitle:@"EN" forState:UIControlStateNormal];
   
   self.externalDeviceLabel.adjustsFontSizeToFitWidth = YES;
   
@@ -85,6 +85,7 @@
   [self.doneButton addTarget:self action:@selector(doneButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
   
 //  [self layoutForOrientation:[[UIApplication sharedApplication] statusBarOrientation]];
+  [self addObservers];
 }
 
 - (id)initWithFrame:(CGRect)frame {
@@ -108,8 +109,165 @@
   [self setPlayButtonsSelected:NO];
   [self.scrubber setValue:0.0f animated:NO];
   self.controlHideCountdown = kPlayerControlsAutoHideTime;
+  self.playButton.center = self.view.center;
+  NSLog(@"self.center: %@", NSStringFromCGPoint(self.center));
+  NSLog(@"self.frame: %@", NSStringFromCGRect(self.frame));
+  [self.view bringSubviewToFront:self.playButton];
 }
+
+#pragma mark - KVO
+- (void)addObservers {
+  [self.scrubber addObserver:self forKeyPath:@"maximumValue" options:0 context:nil];
+  
+  NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
+  [defaultCenter addObserver:self selector:@selector(durationDidLoad:) name:kVKVideoPlayerDurationDidLoadNotification object:nil];
+  [defaultCenter addObserver:self selector:@selector(scrubberValueUpdated:) name:kVKVideoPlayerScrubberValueUpdatedNotification object:nil];
+  
+  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+  [defaults addObserver:self forKeyPath:kVKSettingsSubtitleLanguageCodeKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
+}
+
+- (void)removeObservers {
+  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
+  [defaults removeObserver:self forKeyPath:kVKSettingsSubtitleLanguageCodeKey];
+  
+  [[NSNotificationCenter defaultCenter] removeObserver:self];
+  [self.scrubber removeObserver:self forKeyPath:@"maximumValue"];
+}
+
+- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
+  if ([keyPath isEqualToString:kVKSettingsSubtitleLanguageCodeKey]) {
+    [self.captionButton setTitle:[VKSharedVideoPlayerSettingsManager.subtitleLanguageCode uppercaseString] forState:UIControlStateNormal];
+  }
+  
+  if (object == self.scrubber) {
+    if ([keyPath isEqualToString:@"maximumValue"]) {
+      DDLogVerbose(@"scrubber Value change: %f", self.scrubber.value);
+      RUN_ON_UI_THREAD(^{
+        [self updateTimeLabels];
+      });
+    }
+  }
+}
+
+#pragma mark - View States
+- (void)viewForContentLoading:(BOOL)isPlayingOnExternalDevice {
+  [self setControlsEnabled:NO];
+}
+
+- (void)viewForContentPaused:(BOOL)isPlayingOnExternalDevice {
+  [self setControlsEnabled:YES];
+  [self setPlayButtonsSelected:YES];
+  self.playerLayerView.hidden = NO;
+  self.subtitleLabel.hidden = NO;
+  self.messageLabel.hidden = YES;
+  self.externalDeviceView.hidden = !isPlayingOnExternalDevice;
+}
+
+- (void)viewForContentPlaying:(BOOL)isPlayingOnExternalDevice {
+  self.controlHideCountdown = kPlayerControlsAutoHideTime;
+  [self setControlsEnabled:YES];
+  [self setPlayButtonsSelected:NO];
+  self.playerLayerView.hidden = NO;
+  self.subtitleLabel.hidden = NO;
+  self.messageLabel.hidden = YES;
+  self.externalDeviceView.hidden = !isPlayingOnExternalDevice;
+}
+
+- (void)viewForSuspended:(BOOL)isPlayingOnExternalDevice {
+  
+}
+
+- (void)viewForDismissed:(BOOL)isPlayingOnExternalDevice {
+  self.playerLayerView.hidden = YES;
+  [self setControlsEnabled:NO];
+}
+
+- (void)viewForError:(BOOL)isPlayingOnExternalDevice {
+  self.externalDeviceView.hidden = YES;
+  self.playerLayerView.hidden = YES;
+  [self setControlsEnabled:NO];
+  self.messageLabel.hidden = NO;
+  self.controlHideCountdown = kPlayerControlsDisableAutoHide;
+}
+
+#pragma mark - Scrubber Interface
+- (float)getScrubberValue {
+  return self.scrubber.value;
+}
+
+- (void)setScrubberValue:(float)value animated:(BOOL)animated {
+  [self.scrubber setValue:value animated:animated];
+}
+
+#pragma mark - Subtitles
+- (DTCSSStylesheet*)captionStyleSheet:(NSString*)color {
+  float fontSize = 1.3f;
+  float shadowSize = 1.0f;
+  
+  switch ([[VKSharedUtility setting:kVKSettingsSubtitleSizeKey] integerValue]) {
+    case 1:
+      fontSize = 1.5f;
+      break;
+    case 2:
+      fontSize = 2.0f;
+      shadowSize = 1.2f;
+      break;
+    case 3:
+      fontSize = 3.5f;
+      shadowSize = 1.5f;
+      break;
+  }
+  
+  DTCSSStylesheet* stylesheet = [[DTCSSStylesheet alloc] initWithStyleBlock:[NSString stringWithFormat:@"body{\
+                                                                             text-align: center;\
+                                                                             font-size: %fem;\
+                                                                             font-family: Helvetica Neue;\
+                                                                             font-weight: bold;\
+                                                                             color: %@;\
+                                                                             text-shadow: -%fpx -%fpx %fpx #000, %fpx -%fpx %fpx #000, -%fpx %fpx %fpx #000, %fpx %fpx %fpx #000;\
+                                                                             vertical-align: bottom;\
+                                                                             }", fontSize, color, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize]];
+  return stylesheet;
+}
+
+- (void)updateSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles forTime:(float)time {
+  float timeInMilliseconds = time * 1000;
+  NSString* html = [subtitles contentAtTime:timeInMilliseconds];
+  
+  NSString *color = @"#FFF";
+  
+  NSMutableDictionary* options = [NSMutableDictionary dictionaryWithObject:[self captionStyleSheet:color] forKey:DTDefaultStyleSheet];
+  NSAttributedString *string = [[NSAttributedString alloc] initWithHTMLData:[html dataUsingEncoding:NSUTF8StringEncoding] options:options documentAttributes:NULL];
+  self.subtitleLabel.attributedString = string;
+  self.subtitleLabel.isAccessibilityElement = YES;
+  self.subtitleLabel.accessibilityLabel = [html stripHtml];
+  
+  
+  [self updateSubtitlesPosition];
+  DDLogVerbose(@"Set bottom caption: %@", [html stripHtml]);
+}
+
+- (void)updateSubtitlesPosition {
+  int padding = VKSubtitlePadding;
+  int paddingForBottomControls = 0;
+  if (!self.isControlsHidden) {
+    paddingForBottomControls = self.bottomControls.frame.size.height;
+  }
+  
+  self.subtitleLabel.frame = CGRectMake(padding, padding, self.frame.size.width - padding * 2, self.frame.size.height - padding - paddingForBottomControls);
+  
+  [self.subtitleLabel sizeToFit];
+  self.subtitleLabel.center = CGPointMake(self.frame.size.width * 0.5f, self.subtitleLabel.center.y);
+  [self.subtitleLabel setFrameOriginY:self.frame.size.height - self.subtitleLabel.frame.size.height - padding - paddingForBottomControls];
+}
+
+- (void)clearSubtitles {
+  [self.subtitleLabel setAttributedString:[[NSAttributedString alloc] initWithHTMLData:[@"" dataUsingEncoding:NSUTF8StringEncoding] options:nil documentAttributes:NULL]];
+}
+
 #pragma mark - UI Controls
+
 - (IBAction)playButtonTapped:(id)sender {
 
   UIButton* playButton;
@@ -127,7 +285,15 @@
 }
 
 - (IBAction)fullscreenButtonTapped:(id)sender {
-  self.fullscreenButton.selected = !self.fullscreenButton.selected;
+//  self.fullscreenButton.selected = !self.fullscreenButton.selected;
+//  BOOL isFullScreen = self.fullscreenButton.selected;
+//  
+//  if (isFullScreen) {
+//    [self performOrientationChange:UIInterfaceOrientationLandscapeRight];
+//  } else {
+//    [self performOrientationChange:UIInterfaceOrientationPortrait];
+//  }
+  
   [self.delegate fullScreenButtonTapped];
 }
 
@@ -137,25 +303,6 @@
 
 - (IBAction)doneButtonTapped:(id)sender {
   [self.delegate doneButtonTapped];
-}
-
-
-- (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context {
-  if (object == self.scrubber) {
-    if ([keyPath isEqualToString:@"maximumValue"]) {
-      DDLogVerbose(@"scrubber Value change: %f", self.scrubber.value);
-      RUN_ON_UI_THREAD(^{
-        [self updateTimeLabels];
-      });
-    }
-  }
-  
-//  if ([object isKindOfClass:[UIButton class]]) {
-//    UIButton* button = object;
-//    if ([button isDescendantOfView:self.topControlOverlay]) {
-//      [self layoutTopControls];
-//    }
-//  }
 }
 
 - (void)setDelegate:(id<VKVideoPlayerViewDelegate>)delegate {
@@ -221,7 +368,7 @@
   
   // Current Time Label
   if (!self.currentTimeLabel.hidden) {
-    [self.currentTimeLabel setFrameOriginX:MAX(leftOffset - 2, 0)];
+    [self.currentTimeLabel setFrameOriginX:leftOffset + 6];
     [self.currentTimeLabel setFrameOriginY:(bottomControlsHeight - self.currentTimeLabel.frame.size.height)];
     leftOffset = CGRectGetMaxX(self.currentTimeLabel.frame);
   }
@@ -261,6 +408,7 @@
 
 - (void)setPlayButtonsSelected:(BOOL)selected {
   self.playButton.selected = selected;
+  self.playButton.center = self.view.center;
 }
 
 - (void)setPlayButtonsEnabled:(BOOL)enabled {
@@ -346,6 +494,8 @@
       control.hidden = hidden;
     }
   }
+  
+  [self updateSubtitlesPosition];
 }
 
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {

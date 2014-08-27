@@ -19,8 +19,8 @@
   
   self.player = [[VKVideoPlayer alloc] init];
   self.player.delegate = self;
-  self.player.view.frame = self.view.bounds;
-  [self.view addSubview:self.player.view];
+  self.player.playerView.frame = self.view.bounds;
+  [self.view addSubview:self.player.playerView];
   
   [self addDemoControl];
 }
@@ -41,13 +41,13 @@
   [self playStream:[NSURL URLWithString:@"http://localhost:12345/ios_240.m3u8"]];
   
   [self setLanguageCode:@"JP"];
-  [self.player setCaptionToTop:[self testCaption:@"testCaptionTop"]];
+//  [self.player setCaptionToTop:[self testCaption:@"testCaptionTop"]];
 }
 - (void)playSampleClip2 {
   [self playStream:[NSURL URLWithString:@"http://devimages.apple.com/samplecode/adDemo/ad.m3u8"]];
 
   [self setLanguageCode:@"JP"];
-  [self.player setCaptionToTop:[self testCaption:@"testCaptionTop"]];
+//  [self.player setCaptionToTop:[self testCaption:@"testCaptionTop"]];
 }
 
 - (void)playStream:(NSURL*)url {
@@ -71,13 +71,13 @@
   playSample1Button.frame = CGRectMake(10,40,80,40);
   [playSample1Button setTitle:@"sample1" forState:UIControlStateNormal];
   [playSample1Button addTarget:self action:@selector(playSampleClip1) forControlEvents:UIControlEventTouchUpInside];
-  [self.player.view addSubviewForControl:playSample1Button];
+//  [self.player.view addSubviewForControl:playSample1Button];
 
   UIButton *playSample2Button = [UIButton buttonWithType:UIButtonTypeCustom];
   playSample2Button.frame = CGRectMake(100,40,80,40);
   [playSample2Button setTitle:@"sample2" forState:UIControlStateNormal];
   [playSample2Button addTarget:self action:@selector(playSampleClip2) forControlEvents:UIControlEventTouchUpInside];
-  [self.player.view addSubviewForControl:playSample2Button];
+//  [self.player.view addSubviewForControl:playSample2Button];
 }
 
 #pragma mark - VKVideoPlayerControllerDelegate
@@ -89,31 +89,31 @@
     [self dismissViewControllerAnimated:YES completion:nil];
   }
   
-  if (event == VKVideoPlayerControlEventTapCaption) {
-    RUN_ON_UI_THREAD(^{
-      VKPickerButton *button = self.player.view.captionButton;
-      NSArray *subtitleList = @[@"JP", @"EN"];
-      
-      if (button.isPresented) {
-        [button dismiss];
-      } else {
-        weakSelf.player.view.controlHideCountdown = -1;
-        [button presentFromViewController:weakSelf title:NSLocalizedString(@"settings.captionSection.subtitleLanguageCell.text", nil) items:subtitleList formatCellBlock:^(UITableViewCell *cell, id item) {
-          
-          NSString* code = (NSString*)item;
-          cell.textLabel.text = code;
-          cell.detailTextLabel.text = [NSString stringWithFormat:@"%@%%", @"50"];
-        } isSelectedBlock:^BOOL(id item) {
-          return [item isEqualToString:weakSelf.currentLanguageCode];
-        } didSelectItemBlock:^(id item) {
-          [weakSelf setLanguageCode:item];
-          [button dismiss];
-        } didDismissBlock:^{
-          weakSelf.player.view.controlHideCountdown = kPlayerControlsAutoHideTime;
-        }];
-      }
-    });
-  }
+//  if (event == VKVideoPlayerControlEventTapCaption) {
+//    RUN_ON_UI_THREAD(^{
+//      VKPickerButton *button = self.player.view.captionButton;
+//      NSArray *subtitleList = @[@"JP", @"EN"];
+//      
+//      if (button.isPresented) {
+//        [button dismiss];
+//      } else {
+//        weakSelf.player.view.controlHideCountdown = -1;
+//        [button presentFromViewController:weakSelf title:NSLocalizedString(@"settings.captionSection.subtitleLanguageCell.text", nil) items:subtitleList formatCellBlock:^(UITableViewCell *cell, id item) {
+//          
+//          NSString* code = (NSString*)item;
+//          cell.textLabel.text = code;
+//          cell.detailTextLabel.text = [NSString stringWithFormat:@"%@%%", @"50"];
+//        } isSelectedBlock:^BOOL(id item) {
+//          return [item isEqualToString:weakSelf.currentLanguageCode];
+//        } didSelectItemBlock:^(id item) {
+//          [weakSelf setLanguageCode:item];
+//          [button dismiss];
+//        } didDismissBlock:^{
+//          weakSelf.player.view.controlHideCountdown = kPlayerControlsAutoHideTime;
+//        }];
+//      }
+//    });
+//  }
 }
 
 - (void)setLanguageCode:(NSString*)code {
@@ -125,8 +125,8 @@
     caption = [self testCaption:@"English"];
   }
   if (caption) {
-    [self.player setCaptionToBottom:caption];
-    [self.player.view.captionButton setTitle:[code uppercaseString] forState:UIControlStateNormal];
+    [self.player loadSubtitles:caption];
+//    [self.player.view.captionButton setTitle:[code uppercaseString] forState:UIControlStateNormal];
   }
 }
 

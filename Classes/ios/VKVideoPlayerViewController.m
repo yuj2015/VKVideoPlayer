@@ -9,7 +9,7 @@
 #import "VKVideoPlayerCaptionSRT.h"
 #import "VKVideoPlayerAirPlay.h"
 #import "VKVideoPlayerSettingsManager.h"
-
+#import "VKVideoPlayerView.h"
 
 @interface VKVideoPlayerViewController () {
 }
@@ -52,11 +52,12 @@
 - (void)viewDidLoad {
   [super viewDidLoad];
   
-  self.player = [[VKVideoPlayer alloc] init];
+  VKVideoPlayerView *playerView = [[VKVideoPlayerView alloc] initWithFrame:self.view.frame];
+  self.player = [[VKVideoPlayer alloc] initWithVideoPlayerView:playerView];
   self.player.delegate = self;
-  self.player.view.frame = self.view.bounds;
-  self.player.forceRotate = YES;
-  [self.view addSubview:self.player.view];
+//  self.player.view.frame = self.view.frame;
+//  self.player.forceRotate = YES;
+  [self.view addSubview:self.player.playerView];
   
   if (VKSharedAirplay.isConnected) {
     [VKSharedAirplay activate:self.player];
@@ -88,18 +89,18 @@
 }
 
 - (void)setSubtitle:(VKVideoPlayerCaption*)subtitle {
-  [self.player setCaptionToBottom:subtitle];
+  [self.player loadSubtitles:subtitle];
 }
 
 #pragma mark - App States
 
 - (void)applicationWillResignActive {
-  self.player.view.controlHideCountdown = -1;
+  self.player.playerView.controlHideCountdown = -1;
   if (self.player.state == VKVideoPlayerStateContentPlaying) [self.player pauseContent:NO completionHandler:nil];
 }
 
 - (void)applicationDidBecomeActive {
-  self.player.view.controlHideCountdown = kPlayerControlsDisableAutoHide;
+  self.player.playerView.controlHideCountdown = 5;
 }
 
 #pragma mark - VKVideoPlayerControllerDelegate
