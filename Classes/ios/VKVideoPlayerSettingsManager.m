@@ -30,10 +30,17 @@
 //  return [VKSharedAppSession.user.ogWatch boolValue] && [VKSharedFacebookGateway isAbleToPublish];
 //}
 
-- (BOOL)isSubtitlesEnabled { return [[VKSharedUtility setting:kVKSettingsSubtitlesEnabledKey] boolValue]; }
-- (BOOL)isTopSubtitlesEnabled { return [[VKSharedUtility setting:kVKSettingsTopSubtitlesEnabledKey] boolValue]; }
+- (BOOL)isSubtitlesEnabled {
+  return [[VKSharedUtility setting:kVKSettingsSubtitlesEnabledKey] boolValue];
+}
 
-- (NSString*)subtitleLanguageCode { return [VKSharedUtility setting:kVKSettingsSubtitleLanguageCodeKey]; }
+- (BOOL)isTopSubtitlesEnabled {
+  return [[VKSharedUtility setting:kVKSettingsTopSubtitlesEnabledKey] boolValue];
+}
+
+- (NSString*)subtitleLanguageCode {
+  return [VKSharedUtility setting:kVKSettingsSubtitleLanguageCodeKey];
+}
 
 - (NSArray*)subtitleSizes {
   return @[

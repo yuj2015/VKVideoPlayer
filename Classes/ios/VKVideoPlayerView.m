@@ -105,13 +105,11 @@
   [super layoutSubviews];
 }
 
-- (void)prepareView {
+- (void)initializeView {
   [self setPlayButtonsSelected:NO];
   [self.scrubber setValue:0.0f animated:NO];
   self.controlHideCountdown = kPlayerControlsAutoHideTime;
   self.playButton.center = self.view.center;
-  NSLog(@"self.center: %@", NSStringFromCGPoint(self.center));
-  NSLog(@"self.frame: %@", NSStringFromCGRect(self.frame));
   [self.view bringSubviewToFront:self.playButton];
 }
 
@@ -191,6 +189,15 @@
   self.controlHideCountdown = kPlayerControlsDisableAutoHide;
 }
 
+#pragma mark - Auto hide
+- (void)resetAutoHideCountdown {
+  self.controlHideCountdown = kPlayerControlsAutoHideTime;
+}
+
+- (void)disableAutoHide {
+  self.controlHideCountdown = kPlayerControlsDisableAutoHide;
+}
+
 #pragma mark - Scrubber Interface
 - (float)getScrubberValue {
   return self.scrubber.value;
@@ -201,48 +208,19 @@
 }
 
 #pragma mark - Subtitles
-- (DTCSSStylesheet*)captionStyleSheet:(NSString*)color {
-  float fontSize = 1.3f;
-  float shadowSize = 1.0f;
-  
-  switch ([[VKSharedUtility setting:kVKSettingsSubtitleSizeKey] integerValue]) {
-    case 1:
-      fontSize = 1.5f;
-      break;
-    case 2:
-      fontSize = 2.0f;
-      shadowSize = 1.2f;
-      break;
-    case 3:
-      fontSize = 3.5f;
-      shadowSize = 1.5f;
-      break;
-  }
-  
-  DTCSSStylesheet* stylesheet = [[DTCSSStylesheet alloc] initWithStyleBlock:[NSString stringWithFormat:@"body{\
-                                                                             text-align: center;\
-                                                                             font-size: %fem;\
-                                                                             font-family: Helvetica Neue;\
-                                                                             font-weight: bold;\
-                                                                             color: %@;\
-                                                                             text-shadow: -%fpx -%fpx %fpx #000, %fpx -%fpx %fpx #000, -%fpx %fpx %fpx #000, %fpx %fpx %fpx #000;\
-                                                                             vertical-align: bottom;\
-                                                                             }", fontSize, color, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize]];
-  return stylesheet;
+- (void)clearTimedComments {
+  NSLog(@"clear timed comments");
 }
 
-- (void)updateSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles forTime:(float)time {
-  float timeInMilliseconds = time * 1000;
-  NSString* html = [subtitles contentAtTime:timeInMilliseconds];
+- (void)updateSubtitlesWithHTML:(NSString *)html options:(NSMutableDictionary *)options {
+  if (!VKSharedVideoPlayerSettingsManager.isSubtitlesEnabled) {
+    return;
+  }
   
-  NSString *color = @"#FFF";
-  
-  NSMutableDictionary* options = [NSMutableDictionary dictionaryWithObject:[self captionStyleSheet:color] forKey:DTDefaultStyleSheet];
   NSAttributedString *string = [[NSAttributedString alloc] initWithHTMLData:[html dataUsingEncoding:NSUTF8StringEncoding] options:options documentAttributes:NULL];
   self.subtitleLabel.attributedString = string;
   self.subtitleLabel.isAccessibilityElement = YES;
   self.subtitleLabel.accessibilityLabel = [html stripHtml];
-  
   
   [self updateSubtitlesPosition];
   DDLogVerbose(@"Set bottom caption: %@", [html stripHtml]);

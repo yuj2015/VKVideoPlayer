@@ -23,14 +23,15 @@
   [[NSNotificationCenter defaultCenter] addObserverForName:kVKVideoPlayerStateChanged object:nil queue:nil usingBlock:^(NSNotification *note) {
     VKVideoPlayerState oldState = (VKVideoPlayerState)[[note.userInfo valueForKeyPath:@"oldState"] intValue];
     VKVideoPlayerState newState = (VKVideoPlayerState)[[note.userInfo valueForKeyPath:@"newState"] intValue];
-    [self changePlayerSteteFrom:oldState to:newState];
+    [self changePlayerStateFrom:oldState to:newState];
   }];
 }
 - (void)deactivate {
   [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (NSString*)deviceName {return nil;}
-- (void)changePlayerSteteFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState {
+
+- (void)changePlayerStateFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState {
 }
 
 - (void)updateState {

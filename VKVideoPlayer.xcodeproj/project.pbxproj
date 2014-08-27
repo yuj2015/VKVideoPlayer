@@ -67,6 +67,7 @@
 		1BB9D35918FBFEF300568286 /* testCaptionTop.srt in Resources */ = {isa = PBXBuildFile; fileRef = 1BB9D35818FBFEF300568286 /* testCaptionTop.srt */; };
 		1BB9D35A18FBFEF400568286 /* testCaptionTop.srt in Resources */ = {isa = PBXBuildFile; fileRef = 1BB9D35818FBFEF300568286 /* testCaptionTop.srt */; };
 		1BF1CCDB1903A8660006FBC8 /* DemoRootViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 1BF1CCDA1903A8660006FBC8 /* DemoRootViewController.m */; };
+		27D12CEA19AD7ABC00322FD9 /* VKVideoPlayerTwo.m in Sources */ = {isa = PBXBuildFile; fileRef = 27D12CE919AD7ABC00322FD9 /* VKVideoPlayerTwo.m */; };
 		D1C3D9DF54424BFB8D408C64 /* libPods-VKVideoPlayerTests.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 150BEB98AFEA4FF199BA4AA6 /* libPods-VKVideoPlayerTests.a */; };
 /* End PBXBuildFile section */
 
@@ -155,6 +156,8 @@
 		1BB9D35818FBFEF300568286 /* testCaptionTop.srt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 2; path = testCaptionTop.srt; sourceTree = "<group>"; };
 		1BF1CCD91903A8660006FBC8 /* DemoRootViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoRootViewController.h; sourceTree = "<group>"; };
 		1BF1CCDA1903A8660006FBC8 /* DemoRootViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoRootViewController.m; sourceTree = "<group>"; };
+		27D12CE819AD7ABC00322FD9 /* VKVideoPlayerTwo.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = VKVideoPlayerTwo.h; path = Classes/ios/VKVideoPlayerTwo.h; sourceTree = SOURCE_ROOT; };
+		27D12CE919AD7ABC00322FD9 /* VKVideoPlayerTwo.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = VKVideoPlayerTwo.m; path = Classes/ios/VKVideoPlayerTwo.m; sourceTree = SOURCE_ROOT; };
 		348E1BD9B136464CB42DDFDD /* Pods-VKVideoPlayerTests.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-VKVideoPlayerTests.xcconfig"; path = "Pods/Pods-VKVideoPlayerTests.xcconfig"; sourceTree = "<group>"; };
 		D92486162E1943FAB9D33A36 /* Pods.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = Pods.xcconfig; path = Pods/Pods.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -328,6 +331,8 @@
 				1B1848D018F3D8E50020F2EE /* Extensions */,
 				1BB6AE3118EE9FFE00767FA3 /* Libs */,
 				1BB6AE2C18EE9A8000767FA3 /* Config */,
+				27D12CE819AD7ABC00322FD9 /* VKVideoPlayerTwo.h */,
+				27D12CE919AD7ABC00322FD9 /* VKVideoPlayerTwo.m */,
 			);
 			name = Classes;
 			path = VKVideoPlayer;
@@ -607,6 +612,7 @@
 				1BF1CCDB1903A8660006FBC8 /* DemoRootViewController.m in Sources */,
 				1BB6ADF218EE66B000767FA3 /* VKVideoPlayerViewController.m in Sources */,
 				1BB6ADF318EE66B000767FA3 /* VKVideoPlayerView.m in Sources */,
+				27D12CEA19AD7ABC00322FD9 /* VKVideoPlayerTwo.m in Sources */,
 				1BA61F9718FCCB6D000DDB94 /* DemoVideoPlayerViewController.m in Sources */,
 				1BB6ADCB18EE626A00767FA3 /* VKAppDelegate.m in Sources */,
 				1B1848D818F3DFC40020F2EE /* VKVideoPlayerCaptionSRT.m in Sources */,

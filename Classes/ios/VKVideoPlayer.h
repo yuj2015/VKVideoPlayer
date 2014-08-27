@@ -109,27 +109,18 @@ typedef enum {
 
 @protocol VKVideoPlayerViewInterface <NSObject>
 
+@required
+
+// The player layer that the AVPlayer will play content on
 @property (strong, nonatomic) VKVideoPlayerLayerView *playerLayerView;
+
+// Delegate to allow the view to pass commands back to the player
 @property (weak, nonatomic) id<VKVideoPlayerViewDelegate> delegate;
-@property (assign, nonatomic) NSInteger controlHideCountdown;
-@property (assign, nonatomic) CGRect portraitFrame;
-@property (assign, nonatomic) CGRect landscapeFrame;
 
-// View prep
-- (void)prepareView;
+// Method to initialize view
+- (void)initializeView;
 
-// Auto hide callback
-- (void)hideControlsIfNecessary;
-
-// Play button settings
-- (void)setPlayButtonsSelect:(BOOL)selected;
-- (void)setPlayButtonsEnabled:(BOOL)enabled;
-
-// Scrubber interface
-- (void)setScrubberValue:(float)value animated:(BOOL)animated;
-- (float)getScrubberValue;
-
-// Change view state
+// Methods to customize view for various player states
 - (void)viewForContentLoading:(BOOL)isPlayingOnExternalDevice;
 - (void)viewForContentPaused:(BOOL)isPlayingOnExternalDevice;
 - (void)viewForContentPlaying:(BOOL)isPlayingOnExternalDevice;
@@ -137,12 +128,67 @@ typedef enum {
 - (void)viewForError:(BOOL)isPlayingOnExternalDevice;
 - (void)viewForDismissed:(BOOL)isPlayingOnExternalDevice;
 
-// Loading indicator
+@optional
+
+/** 
+ * To enable subtitle support, include the following:
+ */
+
+// SubtitleLabel of DTAttributedLabel class
+@property (strong, nonatomic) DTAttributedLabel *subtitleLabel;
+
+// Method to clear subtitles
+- (void)clearSubtitles;
+
+// Method to update subtitles with text, this is called periodically by the player
+- (void)updateSubtitlesWithHTML:(NSString *)html options:(NSMutableDictionary *)options;
+
+
+/**
+ * To enable scrubber support, include the following methods
+ * 
+ * NOTE: You can use your own scrubber class, or the VKScrubber class 
+ * included in this project. If you use your own scrubber class, it must 
+ * inform the player of scrubbing start and end by using the scrubbingBegin 
+ * and scrubbingEnd delegate methods
+ */
+
+// Method to update the scrubber to accurately display playback time
+- (void)setScrubberValue:(float)value animated:(BOOL)animated;
+
+// Method to get the current time the scrubber is at
+- (float)getScrubberValue;
+
+
+/**
+ * To enable auto-hide UI support, include the following
+ */
+
+// Property to track auto hide countdown
+@property (assign, nonatomic) NSInteger controlHideCountdown;
+
+// This method is called every second, use it to determine if you should hide your controls
+- (void)hideControlsIfNecessary;
+
+// This method is used to reset and/or re-enable the auto hide countdown
+- (void)resetAutoHideCountdown;
+
+// This method is used to disable auto hide
+- (void)disableAutoHide;
+
+/**
+ * Loading UI support
+ */
+
+// Use this method to show/hide an activity indicator or any other loading state UI
 - (void)setLoading:(BOOL)isLoading;
 
-// Subtitles
-- (void)clearSubtitles;
-- (void)updateSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles forTime:(float)time;
+@property (assign, nonatomic) CGRect portraitFrame;
+@property (assign, nonatomic) CGRect landscapeFrame;
+
+// Play button settings
+- (void)setPlayButtonsSelected:(BOOL)selected;
+- (void)setPlayButtonsEnabled:(BOOL)enabled;
 
 @end
 
@@ -178,11 +224,8 @@ VKVideoPlayerViewDelegate
 
 @property (nonatomic, strong) id<VKVideoPlayerExternalMonitorProtocol> externalMonitor;
 
-@property (nonatomic, strong, readonly) NSURL* streamURL;
-@property (nonatomic, strong) NSString* defaultStreamKey;
-
-@property (nonatomic, assign) CGRect portraitFrame;
-@property (nonatomic, assign) CGRect landscapeFrame;
+//@property (nonatomic, assign) CGRect portraitFrame;
+//@property (nonatomic, assign) CGRect landscapeFrame;
 //@property (nonatomic, assign) BOOL forceRotate;
 
 @property (nonatomic, assign) BOOL isReadyToPlay;

@@ -12,7 +12,8 @@
 #import "NSObject+VKFoundation.h"
 #import "VKVideoPlayerExternalMonitor.h"
 #import "VKVideoPlayerView.h"
-
+#import <MediaPlayer/MediaPlayer.h>
+#import <objc/runtime.h>
 
 #define degreesToRadians(x) (M_PI * x / 180.0f)
 
@@ -98,13 +99,11 @@ typedef enum {
   self.supportedOrientations = VKSharedUtility.isPad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
 
 //  self.forceRotate = NO;
-  
-  
 }
 
 - (void)initializePlayerView {
   self.playerView.delegate = self;
-  [self.playerView prepareView];
+  [self.playerView initializeView];
 }
 
 - (void)loadCurrentVideoTrack {
@@ -177,14 +176,14 @@ typedef enum {
 }
 
 - (void)addObservers {
+  AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+  [audioSession setActive:YES error:nil];
+  [audioSession addObserver:self forKeyPath:@"outputVolume" options:0 context:nil];
+  
   NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
-//  [defaultCenter addObserver:self selector:@selector(applicationWillResignActive) name:UIApplicationWillResignActiveNotification object:nil];
-//  [defaultCenter addObserver:self selector:@selector(applicationDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
-  [defaultCenter addObserver:self selector:@selector(volumeChanged:) name:@"AVSystemController_SystemVolumeDidChangeNotification" object:nil];
-
   [defaultCenter addObserver:self selector:@selector(reachabilityChanged:) name:kReachabilityChangedNotification object:nil];
   [defaultCenter addObserver:self selector:@selector(playerItemReadyToPlay) name:kVKVideoPlayerItemReadyToPlay object:nil];
-//  [defaultCenter addObserver:self selector:@selector(orientationChanged:) name:UIDeviceOrientationDidChangeNotification object:[UIDevice currentDevice]];
+  [defaultCenter addObserver:self selector:@selector(orientationChanged:) name:UIDeviceOrientationDidChangeNotification object:[UIDevice currentDevice]];
 
   NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
   [defaults addObserver:self forKeyPath:kVKSettingsSubtitlesEnabledKey options:(NSKeyValueObservingOptionOld | NSKeyValueObservingOptionNew) context:nil];
@@ -192,6 +191,10 @@ typedef enum {
 }
 
 - (void)removeObservers {
+  AVAudioSession *audioSession = [AVAudioSession sharedInstance];
+  [audioSession setActive:NO error:nil];
+  [audioSession removeObserver:self forKeyPath:@"outputVolume"];
+  
   [[NSNotificationCenter defaultCenter] removeObserver:self];
   NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
   [defaults removeObserver:self forKeyPath:kVKSettingsSubtitlesEnabledKey];
@@ -271,6 +274,12 @@ typedef enum {
       }
     }
   }
+  
+  if (object == [AVAudioSession sharedInstance]) {
+    if ([keyPath isEqual:@"outputVolume"]) {
+      [self volumeChanged:nil];
+    }
+  }
 }
 
 - (void)reachabilityChanged:(NSNotification*)notification {
@@ -313,7 +322,7 @@ typedef enum {
     NSTimeInterval interval = fabs(timeInSeconds - _previousPlaybackTime);
     if (interval < 2 ) {
       if (self.subtitles) {
-        [self.playerView updateSubtitles:self.subtitles forTime:CMTimeGetSeconds([self.player currentCMTime])];
+        [self updateSubtitles];
       }
     }
 
@@ -505,7 +514,10 @@ typedef enum {
 - (void)playerItemReadyToPlay {
   DDLogVerbose(@"Player: playerItemReadyToPlay");
   
-  // Set isReadyToPlay property to true to signify that media is ready
+  /* Set isReadyToPlay property to true to signify that media is ready
+   * This is a separate BOOL instead of a player state because we might
+   * want to play ads (StateSuspended) before player item is ready
+   */
   self.isReadyToPlay = YES;
   
   RUN_ON_UI_THREAD(^{
@@ -534,11 +546,11 @@ typedef enum {
       default:
         /** 
          * Do nothing if player is:
-         * Unknown
-         * Paused
-         * Playing
-         * Suspended
-         * Dismissed
+         * Unknown - Content wasn't loaded, this shouldn't even happen
+         * Paused - There is already existing content
+         * Playing - There is already existing content
+         * Suspended - Ads are playing, do nothing till ads finish
+         * Dismissed - Player has been dismiss, do nothing
          */
         break;
     }    
@@ -556,11 +568,11 @@ typedef enum {
   if (!playerItem) {
     return;
   }
+  
   [_playerItem addObserver:self forKeyPath:@"status" options:0 context:&ItemStatusContext];
   [_playerItem addObserver:self forKeyPath:@"playbackBufferEmpty" options:NSKeyValueObservingOptionNew context:nil];
   [_playerItem addObserver:self forKeyPath:@"playbackLikelyToKeepUp" options:NSKeyValueObservingOptionNew context:nil];
   [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(playerDidPlayToEnd:) name:AVPlayerItemDidPlayToEndTimeNotification object:_playerItem];
-  
 }
 
 - (void)setAvPlayer:(AVPlayer *)avPlayer {
@@ -568,19 +580,22 @@ typedef enum {
   self.subtitleTimer = nil;
   [_avPlayer removeObserver:self forKeyPath:@"status"];
   _avPlayer = avPlayer;
-  if (avPlayer) {
-    __weak __typeof(self) weakSelf = self;
-    [avPlayer addObserver:self forKeyPath:@"status" options:0 context:nil];
-    self.timeObserver = [avPlayer addPeriodicTimeObserverForInterval:CMTimeMake(1, 1) queue:NULL usingBlock:^(CMTime time){
-      [weakSelf periodicTimeObserver:time];
-    }];
-    
-    if (self.subtitles) {
-      [self loadSubtitles:self.subtitles];
-    }
-    
-    [self.playerView clearSubtitles];
+  
+  if (!avPlayer) {
+    return;
   }
+  
+  __weak __typeof(self) weakSelf = self;
+  [_avPlayer addObserver:self forKeyPath:@"status" options:0 context:nil];
+  self.timeObserver = [_avPlayer addPeriodicTimeObserverForInterval:CMTimeMake(1, 1) queue:NULL usingBlock:^(CMTime time){
+    [weakSelf periodicTimeObserver:time];
+  }];
+  
+  if (self.subtitles) {
+    [self loadSubtitles:self.subtitles];
+  }
+  
+  [self.playerView clearSubtitles];
 }
 
 - (AVPlayer*)playerWithPlayerItem:(AVPlayerItem*)playerItem {
@@ -630,7 +645,38 @@ typedef enum {
   } else return CMTimeGetSeconds([self.player currentCMTime]);
 }
 
-#pragma mark - captions
+#pragma mark - Subtitles
+- (DTCSSStylesheet*)captionStyleSheet:(NSString*)color {
+  float fontSize = 1.3f;
+  float shadowSize = 1.0f;
+  
+  switch ([[VKSharedUtility setting:kVKSettingsSubtitleSizeKey] integerValue]) {
+    case 1:
+      fontSize = 1.5f;
+      break;
+    case 2:
+      fontSize = 2.0f;
+      shadowSize = 1.2f;
+      break;
+    case 3:
+      fontSize = 3.5f;
+      shadowSize = 1.5f;
+      break;
+  }
+  
+  DTCSSStylesheet* stylesheet = [[DTCSSStylesheet alloc] initWithStyleBlock:[NSString stringWithFormat:@"body{\
+                                                                             text-align: center;\
+                                                                             font-size: %fem;\
+                                                                             font-family: Helvetica Neue;\
+                                                                             font-weight: bold;\
+                                                                             color: %@;\
+                                                                             text-shadow: -%fpx -%fpx %fpx #000, %fpx -%fpx %fpx #000, -%fpx %fpx %fpx #000, %fpx %fpx %fpx #000;\
+                                                                             vertical-align: bottom;\
+                                                                             }", fontSize, color, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize, shadowSize]];
+  return stylesheet;
+}
+
+
 - (void)loadSubtitles:(id<VKVideoPlayerCaptionProtocol>)subtitles {
   if (!subtitles.boundryTimes.count) {
     [self.playerView clearSubtitles];
@@ -639,16 +685,33 @@ typedef enum {
     return;
   }
   
+  
   __weak __typeof(self) weakSelf = self;
   DDLogVerbose(@"Subs: %@ - segment count %d", subtitles, (int)subtitles.segments.count);
   id subtitleTimer = [self.avPlayer addBoundaryTimeObserverForTimes:subtitles.boundryTimes queue:NULL usingBlock:^{
-    [weakSelf.playerView updateSubtitles:subtitles forTime:CMTimeGetSeconds([weakSelf.player currentCMTime])];
+    [weakSelf updateSubtitles];
   }];
   
   self.subtitleTimer = subtitleTimer;
   self.subtitles = subtitles;
   
-  [self.playerView updateSubtitles:subtitles forTime:CMTimeGetSeconds([self.player currentCMTime])];
+  [self updateSubtitles];
+}
+
+- (void)updateSubtitles {
+  if (!self.subtitles || !VKSharedVideoPlayerSettingsManager.isSubtitlesEnabled) {
+    return;
+  }
+  
+  // Check if view supports subtitles
+  if ([self.playerView respondsToSelector:@selector(updateSubtitlesWithHTML:options:)]) {
+    float timeInMilliseconds = CMTimeGetSeconds([self.player currentCMTime]) * 1000;
+    NSString* html = [self.subtitles contentAtTime:timeInMilliseconds];
+    NSString *color = @"#FFF";
+    NSMutableDictionary* options = [NSMutableDictionary dictionaryWithObject:[self captionStyleSheet:color] forKey:DTDefaultStyleSheet];
+    
+    [self.playerView updateSubtitlesWithHTML:html options:options];
+  }
 }
 
 #pragma mark - Ad State Support
@@ -718,7 +781,9 @@ typedef enum {
     
     switch (oldPlayerState) {
       case VKVideoPlayerStateContentLoading:
-        [self.playerView setLoading:NO];
+        if ([self.playerView respondsToSelector:@selector(setLoading:)]) {
+          [self.playerView setLoading:NO];
+        }
         break;
       case VKVideoPlayerStateContentPlaying:
         break;
@@ -740,7 +805,9 @@ typedef enum {
       case VKVideoPlayerStateUnknown:
         break;
       case VKVideoPlayerStateContentLoading:
-        [self.playerView setLoading:YES];
+        if ([self.playerView respondsToSelector:@selector(setLoading:)]) {
+          [self.playerView setLoading:YES];
+        }
         [self.playerView viewForContentLoading:isPlayingOnExternalDevice];
         break;
       case VKVideoPlayerStateContentPlaying: {
@@ -850,7 +917,9 @@ typedef enum {
 - (void)scrubbingBegin {
   [self pauseContent:NO completionHandler:^{
     _scrubbing = YES;
-    self.playerView.controlHideCountdown = -1;
+    if ([self.playerView respondsToSelector:@selector(disableAutoHide)] && class_getProperty([self.playerView class], "controlHideCountdown")) {
+      [self.playerView disableAutoHide];
+    }
     _beforeSeek = [self currentTime];
   }];
 }
@@ -946,10 +1015,10 @@ typedef enum {
 #pragma mark - Handle volume change
 
 - (void)volumeChanged:(NSNotification *)notification {
-  self.playerView.controlHideCountdown = kPlayerControlsAutoHideTime;
+  if ([self.playerView respondsToSelector:@selector(resetAutoHideCountdown)] && class_getProperty([self.playerView class], "controlHideCountdown")) {
+    [self.playerView resetAutoHideCountdown];
+  }
 }
-
-
 
 #pragma mark - Remote Control Events handler
 
@@ -986,36 +1055,36 @@ typedef enum {
 }
 
 #pragma mark - Orientation
-//- (void)orientationChanged:(NSNotification *)note {
-//  UIDevice * device = note.object;
-//
-//  UIInterfaceOrientation rotateToOrientation;
-//  switch(device.orientation) {
-//    case UIDeviceOrientationPortrait:
-//      DDLogVerbose(@"ORIENTATION: Portrait");
-//      rotateToOrientation = UIInterfaceOrientationPortrait;
-//      break;
-//    case UIDeviceOrientationPortraitUpsideDown:
-//      DDLogVerbose(@"ORIENTATION: PortraitDown");
-//      rotateToOrientation = UIInterfaceOrientationPortraitUpsideDown;
-//      break;
-//    case UIDeviceOrientationLandscapeLeft:
-//      DDLogVerbose(@"ORIENTATION: LandscapeRight");
-//      rotateToOrientation = UIInterfaceOrientationLandscapeRight;
-//      break;
-//    case UIDeviceOrientationLandscapeRight:
-//      DDLogVerbose(@"ORIENTATION: LandscapeLeft");
-//      rotateToOrientation = UIInterfaceOrientationLandscapeLeft;
-//      break;
-//    default:
-//      rotateToOrientation = self.visibleInterfaceOrientation;
-//      break;
-//  }
-//  
-//  if ((1 << rotateToOrientation) & self.supportedOrientations && rotateToOrientation != self.visibleInterfaceOrientation) {
+- (void)orientationChanged:(NSNotification *)note {
+  UIDevice * device = note.object;
+
+  UIInterfaceOrientation rotateToOrientation;
+  switch(device.orientation) {
+    case UIDeviceOrientationPortrait:
+      DDLogVerbose(@"ORIENTATION: Portrait");
+      rotateToOrientation = UIInterfaceOrientationPortrait;
+      break;
+    case UIDeviceOrientationPortraitUpsideDown:
+      DDLogVerbose(@"ORIENTATION: PortraitDown");
+      rotateToOrientation = UIInterfaceOrientationPortraitUpsideDown;
+      break;
+    case UIDeviceOrientationLandscapeLeft:
+      DDLogVerbose(@"ORIENTATION: LandscapeRight");
+      rotateToOrientation = UIInterfaceOrientationLandscapeRight;
+      break;
+    case UIDeviceOrientationLandscapeRight:
+      DDLogVerbose(@"ORIENTATION: LandscapeLeft");
+      rotateToOrientation = UIInterfaceOrientationLandscapeLeft;
+      break;
+    default:
+      rotateToOrientation = self.visibleInterfaceOrientation;
+      break;
+  }
+  
+  if ((1 << rotateToOrientation) & self.supportedOrientations && rotateToOrientation != self.visibleInterfaceOrientation) {
 //    [self performOrientationChange:rotateToOrientation];
-//  }
-//}
+  }
+}
 
 //- (void)performOrientationChange:(UIInterfaceOrientation)deviceOrientation {
 //

@@ -9,7 +9,7 @@
 #import "VKPickerButton.h"
 #import "VKView.h"
 #import "VKVideoPlayerConfig.h"
-#import "VKVideoPlayer.h"
+#import "VKVideoPlayerTwo.h"
 
 #define kPlayerControlsAutoHideTime    5
 #define kPlayerControlsDisableAutoHide -1
@@ -17,7 +17,7 @@
 @class VKVideoPlayerTrack;
 @class VKVideoPlayerLayerView;
 
-@interface VKVideoPlayerView : UIView <VKVideoPlayerViewInterface>
+@interface VKVideoPlayerView : UIView <VKVikiVideoPlayerViewInterface>
 
 @property (strong, nonatomic) IBOutlet UIView *view;
 @property (strong, nonatomic) IBOutlet VKVideoPlayerLayerView *playerLayerView;

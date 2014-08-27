@@ -91,7 +91,7 @@ static const int ddLogLevel = LOG_LEVEL_WARN;
   return @"Unknown Device";
 }
 
-- (void)changePlayerSteteFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState {
+- (void)changePlayerStateFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState {
   switch (newState) {
     case VKVideoPlayerStateContentLoading:
       self.externalView.messageLabel.hidden = YES;

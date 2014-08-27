@@ -53,7 +53,7 @@
   [super viewDidLoad];
   
   VKVideoPlayerView *playerView = [[VKVideoPlayerView alloc] initWithFrame:self.view.frame];
-  self.player = [[VKVideoPlayer alloc] initWithVideoPlayerView:playerView];
+  self.player = [[VKVideoPlayerTwo alloc] initWithVideoPlayerView:playerView];
   self.player.delegate = self;
 //  self.player.view.frame = self.view.frame;
 //  self.player.forceRotate = YES;
@@ -62,6 +62,8 @@
   if (VKSharedAirplay.isConnected) {
     [VKSharedAirplay activate:self.player];
   }
+  
+  [VKSharedUtility setSetting:@YES forKey:kVKSettingsSubtitlesEnabledKey];
 }
 
 - (void)viewWillAppear:(BOOL)animated {

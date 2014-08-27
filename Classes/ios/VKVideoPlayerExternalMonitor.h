@@ -24,7 +24,7 @@ typedef enum {
 - (void)activate:(VKVideoPlayer*)player;
 - (void)deactivate;
 - (NSString*)deviceName;
-- (void)changePlayerSteteFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState;
+- (void)changePlayerStateFrom:(VKVideoPlayerState)oldState to:(VKVideoPlayerState)newState;
 @end
 
 @interface VKVideoPlayerExternalMonitor : NSObject<VKVideoPlayerExternalMonitorProtocol>
