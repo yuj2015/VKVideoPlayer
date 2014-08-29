@@ -47,6 +47,7 @@
 
 @property (assign, nonatomic) CGRect portraitFrame;
 @property (assign, nonatomic) CGRect landscapeFrame;
+@property (assign, nonatomic) BOOL isFullScreen;
 
 - (IBAction)fullscreenButtonTapped:(id)sender;
 - (IBAction)playButtonTapped:(id)sender;

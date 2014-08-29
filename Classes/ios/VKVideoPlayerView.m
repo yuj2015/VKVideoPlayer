@@ -17,6 +17,7 @@
 
 #define PADDING 8
 #define VKSubtitlePadding 10
+#define degreesToRadians(x) (M_PI * x / 180.0f)
 
 #ifdef DEBUG
   static const int ddLogLevel = LOG_LEVEL_WARN;
@@ -109,8 +110,6 @@
   [self setPlayButtonsSelected:NO];
   [self.scrubber setValue:0.0f animated:NO];
   self.controlHideCountdown = kPlayerControlsAutoHideTime;
-  self.playButton.center = self.view.center;
-  [self.view bringSubviewToFront:self.playButton];
 }
 
 #pragma mark - KVO
@@ -291,7 +290,6 @@
 - (void)durationDidLoad:(NSNotification *)notification {
   NSDictionary *info = [notification userInfo];
   NSNumber* duration = [info objectForKey:@"duration"];
-  [self.delegate videoTrack].totalVideoDuration = duration;
   RUN_ON_UI_THREAD(^{
     self.scrubber.maximumValue = [duration floatValue];
     self.scrubber.hidden = NO;
@@ -386,7 +384,6 @@
 
 - (void)setPlayButtonsSelected:(BOOL)selected {
   self.playButton.selected = selected;
-  self.playButton.center = self.view.center;
 }
 
 - (void)setPlayButtonsEnabled:(BOOL)enabled {
@@ -514,4 +511,100 @@
   [self layoutSliderForOrientation:interfaceOrientation];
 }
 
+#pragma mark - View resizing
+- (void)performOrientationChangeFrom:(UIInterfaceOrientation)fromOrientation to:(UIInterfaceOrientation)toOrientation {
+  CGFloat degrees = [self degreesForOrientation:toOrientation];
+  __weak __typeof__(self) weakSelf = self;
+  [UIView animateWithDuration:0.3f animations:^{
+    CGRect bounds = [[UIScreen mainScreen] bounds];
+    CGRect parentBounds;
+    CGRect viewBounds;
+    NSLog(@"main screen bounds: %@", NSStringFromCGRect(bounds));
+    
+    if (UIInterfaceOrientationIsLandscape(toOrientation)) {
+      viewBounds = CGRectMake(0, 0, CGRectGetWidth(self.landscapeFrame), CGRectGetHeight(self.landscapeFrame));
+      parentBounds = CGRectMake(0, 0, MAX(bounds.size.width, bounds.size.height), MIN(bounds.size.width, bounds.size.height));
+    } else {
+      viewBounds = CGRectMake(0, 0, CGRectGetWidth(self.portraitFrame), CGRectGetHeight(self.portraitFrame));
+      parentBounds = CGRectMake(0, 0, MIN(bounds.size.width, bounds.size.height), MAX(bounds.size.width, bounds.size.height));
+    }
+    
+    NSLog(@"parent bounds: %@", NSStringFromCGRect(parentBounds));
+    NSLog(@" ");
+    NSLog(@"original");
+    NSLog(@"superview bounds: %@", NSStringFromCGRect(weakSelf.superview.bounds));
+    NSLog(@"superview frame: %@", NSStringFromCGRect(weakSelf.superview.frame));
+    
+    weakSelf.view.superview.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
+    
+    NSLog(@" ");
+    NSLog(@"after rotate");
+    NSLog(@"superview frame: %@", NSStringFromCGRect(weakSelf.superview.frame));
+    NSLog(@"superview bounds: %@", NSStringFromCGRect(weakSelf.superview.bounds));
+    
+    weakSelf.view.superview.bounds = parentBounds;
+    NSLog(@" ");
+    NSLog(@"after set bounds");
+    NSLog(@"superview frame: %@", NSStringFromCGRect(weakSelf.superview.frame));
+    NSLog(@"superview bounds: %@", NSStringFromCGRect(weakSelf.superview.bounds));
+    
+    [weakSelf.superview setFrameOriginX:0.0f];
+    [weakSelf.superview setFrameOriginY:0.0f];
+    NSLog(@" ");
+    NSLog(@"after set origin");
+    NSLog(@"superview frame: %@", NSStringFromCGRect(weakSelf.view.superview.frame));
+    NSLog(@"superview bounds: %@", NSStringFromCGRect(weakSelf.view.superview.bounds));
+    
+    CGRect wvFrame = weakSelf.superview.superview.frame;
+    //    weakSelf.view.superview.superview.frame = bounds;
+    NSLog(@"wvframe: %@", NSStringFromCGRect(wvFrame));
+    //    CGRect wvFrame = weakSelf.view.superview.frame;
+    
+    if (wvFrame.origin.y > 0) {
+      wvFrame.size.width = parentBounds.size.width;
+      wvFrame.size.height = parentBounds.size.height;
+      wvFrame.origin.y = 0;
+      weakSelf.superview.superview.frame = wvFrame;
+      NSLog(@"wvframe: %@", NSStringFromCGRect(weakSelf.view.superview.superview.frame));
+    }
+    
+    weakSelf.bounds = viewBounds;
+    [weakSelf setFrameOriginX:0.0f];
+    [weakSelf setFrameOriginY:0.0f];
+    NSLog(@"player view frame: %@", NSStringFromCGRect(weakSelf.frame));
+    NSLog(@"player view bounds: %@", NSStringFromCGRect(weakSelf.bounds));
+    [weakSelf layoutForOrientation:toOrientation];
+    
+  } completion:^(BOOL finished) {
+    //    self.view.superview.frame = self.view.superview.bounds;
+    NSLog(@"player view: %@, %@", NSStringFromCGRect(self.frame), NSStringFromCGRect(self.bounds));
+    NSLog(@"superview:%@, %@", NSStringFromCGRect(self.superview.frame), NSStringFromCGRect(self.superview.bounds));
+    NSLog(@"main screen bounds: %@", NSStringFromCGRect([UIScreen mainScreen].bounds));
+    NSLog(@"full screen button frame: %@", NSStringFromCGRect(self.fullscreenButton.frame));
+    NSLog(@"bottom bar frame: %@", NSStringFromCGRect(self.bottomControls.frame));
+    
+//    if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeOrientationFrom:)]) {
+//      [self.delegate videoPlayer:self didChangeOrientationFrom:lastOrientation];
+//    }
+  }];
+  
+  self.fullscreenButton.selected = self.isFullScreen = UIInterfaceOrientationIsLandscape(toOrientation);
+}
+
+- (CGFloat)degreesForOrientation:(UIInterfaceOrientation)deviceOrientation {
+  switch (deviceOrientation) {
+    case UIInterfaceOrientationPortrait:
+      return 0;
+      break;
+    case UIInterfaceOrientationLandscapeRight:
+      return 90;
+      break;
+    case UIInterfaceOrientationLandscapeLeft:
+      return -90;
+      break;
+    case UIInterfaceOrientationPortraitUpsideDown:
+      return 180;
+      break;
+  }
+}
 @end

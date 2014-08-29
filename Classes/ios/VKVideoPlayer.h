@@ -69,6 +69,7 @@ typedef enum {
 
 @protocol VKVideoPlayerDelegate <NSObject>
 @optional
+- (void)shouldVideoPlayer:(VKVideoPlayer *)videoPlayer changeStateTo:(VKVideoPlayerState)toState;
 - (void)videoPlayer:(VKVideoPlayer *)videoPlayer willChangeStateTo:(VKVideoPlayerState)toState;
 - (void)videoPlayer:(VKVideoPlayer *)videoPlayer didChangeStateFrom:(VKVideoPlayerState)fromState;
 - (BOOL)shouldVideoPlayer:(VKVideoPlayer *)videoPlayer startVideo:(id<VKVideoPlayerTrackProtocol>)track;
@@ -89,7 +90,6 @@ typedef enum {
 @protocol VKVideoPlayerExternalMonitorProtocol;
 
 @protocol VKVideoPlayerViewDelegate <VKScrubberDelegate>
-@property (nonatomic, readonly) VKVideoPlayerTrack *videoTrack;
 @property (nonatomic, readonly) UIInterfaceOrientation visibleInterfaceOrientation;
 
 - (void)fullScreenButtonTapped;
@@ -107,8 +107,10 @@ typedef enum {
 - (void)scrubbingEnd;
 @end
 
+#pragma mark - Player View Interface
 @protocol VKVideoPlayerViewInterface <NSObject>
 
+#pragma mark - Required implementation to ensure base functionality
 @required
 
 // The player layer that the AVPlayer will play content on
@@ -128,8 +130,14 @@ typedef enum {
 - (void)viewForError:(BOOL)isPlayingOnExternalDevice;
 - (void)viewForDismissed:(BOOL)isPlayingOnExternalDevice;
 
+// Methods to control play button states
+- (void)setPlayButtonsSelected:(BOOL)selected;
+- (void)setPlayButtonsEnabled:(BOOL)enabled;
+
+#pragma mark - Optional features
 @optional
 
+#pragma mark - Subtitle support
 /** 
  * To enable subtitle support, include the following:
  */
@@ -143,7 +151,7 @@ typedef enum {
 // Method to update subtitles with text, this is called periodically by the player
 - (void)updateSubtitlesWithHTML:(NSString *)html options:(NSMutableDictionary *)options;
 
-
+#pragma mark - Scrubber support
 /**
  * To enable scrubber support, include the following methods
  * 
@@ -159,7 +167,7 @@ typedef enum {
 // Method to get the current time the scrubber is at
 - (float)getScrubberValue;
 
-
+#pragma mark - Auto-hide UI support
 /**
  * To enable auto-hide UI support, include the following
  */
@@ -176,6 +184,7 @@ typedef enum {
 // This method is used to disable auto hide
 - (void)disableAutoHide;
 
+#pragma mark - Activity indicator support
 /**
  * Loading UI support
  */
@@ -183,12 +192,18 @@ typedef enum {
 // Use this method to show/hide an activity indicator or any other loading state UI
 - (void)setLoading:(BOOL)isLoading;
 
+#pragma mark - View resizing support
+/**
+ * View resizing support
+ */
+
+// These properties define the portrait and landscape frames and determine full screen mode
 @property (assign, nonatomic) CGRect portraitFrame;
 @property (assign, nonatomic) CGRect landscapeFrame;
+@property (nonatomic, assign) BOOL isFullScreen;
 
-// Play button settings
-- (void)setPlayButtonsSelected:(BOOL)selected;
-- (void)setPlayButtonsEnabled:(BOOL)enabled;
+// Call this method on auto rotate or manual rotate
+- (void)performOrientationChangeFrom:(UIInterfaceOrientation)fromOrientation to:(UIInterfaceOrientation)toOrientation;
 
 @end
 
@@ -220,7 +235,6 @@ VKVideoPlayerViewDelegate
 @property (nonatomic, strong) id<VKPlayer> player;
 @property (nonatomic, assign) UIInterfaceOrientation visibleInterfaceOrientation;
 @property (nonatomic, assign) UIInterfaceOrientationMask supportedOrientations;
-@property (nonatomic, assign) BOOL isFullScreen;
 
 @property (nonatomic, strong) id<VKVideoPlayerExternalMonitorProtocol> externalMonitor;
 
@@ -253,7 +267,7 @@ VKVideoPlayerViewDelegate
 - (void)playContent;
 - (void)pauseContent;
 - (void)pauseContentWithCompletionHandler:(void (^)())completionHandler;
-- (void)pauseContent:(BOOL)isUserAction completionHandler:(void (^)())completionHandler;
+//- (void)pauseContent:(BOOL)isUserAction completionHandler:(void (^)())completionHandler;
 - (void)dismiss;
 
 #pragma mark - Captions

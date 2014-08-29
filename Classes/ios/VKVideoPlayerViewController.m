@@ -98,7 +98,7 @@
 
 - (void)applicationWillResignActive {
   self.player.playerView.controlHideCountdown = -1;
-  if (self.player.state == VKVideoPlayerStateContentPlaying) [self.player pauseContent:NO completionHandler:nil];
+  if (self.player.state == VKVideoPlayerStateContentPlaying) [self.player pauseContentWithCompletionHandler:nil];
 }
 
 - (void)applicationDidBecomeActive {
@@ -118,7 +118,7 @@
 }
 
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation {
-  if (self.player.isFullScreen) {
+  if (self.player.playerView.isFullScreen) {
     return UIInterfaceOrientationIsLandscape(interfaceOrientation);
   } else {
     return NO;
