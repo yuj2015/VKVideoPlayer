@@ -1282,6 +1282,7 @@ typedef enum {
 
 - (CGFloat)degreesForOrientation:(UIInterfaceOrientation)deviceOrientation {
   switch (deviceOrientation) {
+    case UIInterfaceOrientationUnknown:
     case UIInterfaceOrientationPortrait:
       return 0;
       break;
