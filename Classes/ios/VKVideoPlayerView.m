@@ -100,10 +100,15 @@
     self.topPortraitCloseButton
   ]) {
       // jun add 2015-04-24: 修改图片
-      [button setBackgroundImage:[[UIImage imageWithStackedIcons:(NSArray*)[FAKIonIcons iosArrowLeftIconWithSize:30] imageSize:CGSizeMake(30, 30)] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
+//      [button setBackgroundImage:[[UIImage imageWithStackedIcons:(NSArray*)[FAKIonIcons iosArrowLeftIconWithSize:30] imageSize:CGSizeMake(30, 30)] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
       
-//    [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
-    button.layer.cornerRadius = 4.0f;
+      FAKIonIcons *icon = [FAKIonIcons iosArrowLeftIconWithSize:20];
+      [icon addAttribute:NSForegroundColorAttributeName value:[UIColor whiteColor]];
+      UIImage *image= [UIImage imageWithStackedIcons: [NSArray arrayWithObject:icon] imageSize:CGSizeMake(20, 20)];
+      [button setImage:image forState:UIControlStateNormal];
+      
+      [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
+    button.layer.cornerRadius = 15.0f;
     button.clipsToBounds = YES;
   }
   
@@ -173,6 +178,12 @@
 }
 
 - (IBAction)doneButtonTapped:(id)sender {
+    // jun add 2015-04-24: 如果是横屏即全屏只需退出横屏
+    if (self.fullscreenButton.selected) {
+        [self fullscreenButtonTapped:nil];
+        return ;
+  }
+    
   [self.delegate doneButtonTapped];
 }
 
@@ -245,7 +256,7 @@
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
     [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.fullscreenButton.frame) - self.totalTimeLabel.frame.size.width];
   } else {
-    // 更新下全部时间标签位置
+    // jun add 2015-04-24: 更新下全部时间标签位置
     [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.fullscreenButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
 //    [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.captionButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
   }
@@ -400,18 +411,13 @@
     
   } else {
     [self.topControlOverlay setFrameOriginY:0.0f];
-    self.topControlOverlay.hidden = NO;
+    self.topControlOverlay.hidden = YES;
       
       // jun add 2015-04-24: 重新设置topPortraitControlOverlay位置
       [self.topPortraitControlOverlay setFrameOriginY:0.0f];
       [self.topPortraitControlOverlay setFrameOriginX:0.0f];
-      [self.topPortraitCloseButton setFrameOriginX:6.0f];
-      [self.topPortraitCloseButton setFrameOriginY:6.0f];
-      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitControlOverlay.frame), CGRectGetMinY(self.topPortraitControlOverlay.frame),CGRectGetWidth(self.topPortraitControlOverlay.frame),CGRectGetHeight(self.topPortraitControlOverlay.frame));
-      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitControlOverlay.bounds), CGRectGetMinY(self.topPortraitControlOverlay.bounds),CGRectGetWidth(self.topPortraitControlOverlay.bounds),CGRectGetHeight(self.topPortraitControlOverlay.bounds));
-      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitCloseButton.frame), CGRectGetMinY(self.topPortraitCloseButton.frame),CGRectGetWidth(self.topPortraitCloseButton.frame),CGRectGetHeight(self.topPortraitCloseButton.frame));
-      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitCloseButton.bounds), CGRectGetMinY(self.topPortraitCloseButton.bounds),CGRectGetWidth(self.topPortraitCloseButton.bounds),CGRectGetHeight(self.topPortraitCloseButton.bounds));
       
+      self.topPortraitControlOverlay.hidden = NO;
       //    self.topPortraitControlOverlay.hidden = YES;
     
 //    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2 + CGRectGetMaxY(self.topControlOverlay.frame)];
