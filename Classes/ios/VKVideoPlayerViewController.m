@@ -72,6 +72,8 @@
 
 - (void)viewDidAppear:(BOOL)animated {
   [super viewDidAppear:animated];
+    
+    self.player.originFrame = self.player.view.frame;
 }
 
 - (void)viewWillDisappear:(BOOL)animated {

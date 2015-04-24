@@ -13,6 +13,7 @@
 #import "VKVideoPlayerTrack.h"
 #import "UIImage+VKFoundation.h"
 #import "VKVideoPlayerSettingsManager.h"
+#import "FAKIonIcons.h"
 
 #define PADDING 8
 
@@ -77,12 +78,12 @@
   [self.bottomControlOverlay addSubview:overlay];
   [self.bottomControlOverlay sendSubviewToBack:overlay];
 
-  overlay = [[UIView alloc] initWithFrame:self.topControlOverlay.frame];
-  overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-  overlay.backgroundColor = THEMECOLOR(@"colorBackground8");
-  overlay.alpha = 0.6f;
-  [self.topControlOverlay addSubview:overlay];
-  [self.topControlOverlay sendSubviewToBack:overlay];
+//  overlay = [[UIView alloc] initWithFrame:self.topControlOverlay.frame];
+//  overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+//  overlay.backgroundColor = THEMECOLOR(@"colorBackground8");
+//  overlay.alpha = 0.6f;
+//  [self.topControlOverlay addSubview:overlay];
+//  [self.topControlOverlay sendSubviewToBack:overlay];
   
   [self.captionButton setTitle:[VKSharedVideoPlayerSettingsManager.subtitleLanguageCode uppercaseString] forState:UIControlStateNormal];
   
@@ -98,7 +99,10 @@
   for (UIButton* button in @[
     self.topPortraitCloseButton
   ]) {
-    [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
+      // jun add 2015-04-24: 修改图片
+      [button setBackgroundImage:[[UIImage imageWithStackedIcons:(NSArray*)[FAKIonIcons iosArrowLeftIconWithSize:30] imageSize:CGSizeMake(30, 30)] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
+      
+//    [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
     button.layer.cornerRadius = 4.0f;
     button.clipsToBounds = YES;
   }
@@ -233,10 +237,17 @@
 }
 
 - (void)layoutSliderForOrientation:(UIInterfaceOrientation)interfaceOrientation {
+    
+    // jun add 2015-04-24: 开始显示bottomControlOverlay
+    if (self.bottomControlOverlay.isHidden)
+        self.bottomControlOverlay.hidden = NO;
+    
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
     [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.fullscreenButton.frame) - self.totalTimeLabel.frame.size.width];
   } else {
-    [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.captionButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
+    // 更新下全部时间标签位置
+    [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.fullscreenButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
+//    [self.totalTimeLabel setFrameOriginX:CGRectGetMinX(self.captionButton.frame) - self.totalTimeLabel.frame.size.width - PADDING];
   }
 
   [self.scrubber setFrameOriginX:self.currentTimeLabel.frame.origin.x + self.currentTimeLabel.frame.size.width + 4];
@@ -370,14 +381,14 @@
 - (void)layoutForOrientation:(UIInterfaceOrientation)interfaceOrientation {
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
     self.topControlOverlay.hidden = YES;
-    self.topPortraitControlOverlay.hidden = NO;
+//    self.topPortraitControlOverlay.hidden = NO;
     
-    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2];
-    self.buttonPlaceHolderView.hidden = YES;
+//    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2];
+//    self.buttonPlaceHolderView.hidden = YES;
     
-    self.captionButton.hidden = YES;
-    self.videoQualityButton.hidden = YES;
-    
+//    self.captionButton.hidden = YES;
+//    self.videoQualityButton.hidden = YES;
+      
     [self.bigPlayButton setFrameOriginY:CGRectGetMinY(self.bottomControlOverlay.frame)/2 - CGRectGetHeight(self.bigPlayButton.frame)/2];
     
     for (UIView *control in self.portraitControls) {
@@ -390,14 +401,25 @@
   } else {
     [self.topControlOverlay setFrameOriginY:0.0f];
     self.topControlOverlay.hidden = NO;
-    self.topPortraitControlOverlay.hidden = YES;
+      
+      // jun add 2015-04-24: 重新设置topPortraitControlOverlay位置
+      [self.topPortraitControlOverlay setFrameOriginY:0.0f];
+      [self.topPortraitControlOverlay setFrameOriginX:0.0f];
+      [self.topPortraitCloseButton setFrameOriginX:6.0f];
+      [self.topPortraitCloseButton setFrameOriginY:6.0f];
+      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitControlOverlay.frame), CGRectGetMinY(self.topPortraitControlOverlay.frame),CGRectGetWidth(self.topPortraitControlOverlay.frame),CGRectGetHeight(self.topPortraitControlOverlay.frame));
+      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitControlOverlay.bounds), CGRectGetMinY(self.topPortraitControlOverlay.bounds),CGRectGetWidth(self.topPortraitControlOverlay.bounds),CGRectGetHeight(self.topPortraitControlOverlay.bounds));
+      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitCloseButton.frame), CGRectGetMinY(self.topPortraitCloseButton.frame),CGRectGetWidth(self.topPortraitCloseButton.frame),CGRectGetHeight(self.topPortraitCloseButton.frame));
+      NSLog(@"%g,%g,%g,%g", CGRectGetMinX(self.topPortraitCloseButton.bounds), CGRectGetMinY(self.topPortraitCloseButton.bounds),CGRectGetWidth(self.topPortraitCloseButton.bounds),CGRectGetHeight(self.topPortraitCloseButton.bounds));
+      
+      //    self.topPortraitControlOverlay.hidden = YES;
     
-    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2 + CGRectGetMaxY(self.topControlOverlay.frame)];
-    self.buttonPlaceHolderView.hidden = NO;
+//    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2 + CGRectGetMaxY(self.topControlOverlay.frame)];
+//    self.buttonPlaceHolderView.hidden = NO;
     
-    self.captionButton.hidden = NO;
-    self.videoQualityButton.hidden = NO;
-
+//    self.captionButton.hidden = NO;
+//    self.videoQualityButton.hidden = NO;
+      
     [self.bigPlayButton setFrameOriginY:(CGRectGetMinY(self.bottomControlOverlay.frame) - CGRectGetMaxY(self.topControlOverlay.frame))/2 + CGRectGetMaxY(self.topControlOverlay.frame) - CGRectGetHeight(self.bigPlayButton.frame)/2];
     
     for (UIView *control in self.portraitControls) {

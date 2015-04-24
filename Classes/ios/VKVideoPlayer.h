@@ -129,6 +129,10 @@ VKVideoPlayerViewDelegate
 @property (nonatomic, assign) BOOL forceRotate;
 
 
+// jun add 2015-04-22
+@property (nonatomic, assign) CGRect originFrame;
+
+
 - (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView;
 
 - (void)seekToLastWatchedDuration;

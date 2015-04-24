@@ -22,8 +22,8 @@ static const int ddLogLevel = LOG_LEVEL_WARN;
 static const int ddLogLevel = LOG_LEVEL_WARN;
 #endif
 
-NSString *kTracksKey		= @"tracks";
-NSString *kPlayableKey		= @"playable";
+NSString *kTracksKey    = @"tracks";
+NSString *kPlayableKey    = @"playable";
 
 static const NSString *ItemStatusContext;
 
@@ -108,6 +108,9 @@ typedef enum {
   
   self.portraitFrame = CGRectMake(0, 0, MIN(bounds.size.width, bounds.size.height), MAX(bounds.size.width, bounds.size.height));
   self.landscapeFrame = CGRectMake(0, 0, MAX(bounds.size.width, bounds.size.height), MIN(bounds.size.width, bounds.size.height));
+    
+  // jun add 2015-04-22
+  self.originFrame = bounds;
 }
 
 - (void)initializePlayerView {
@@ -339,7 +342,12 @@ typedef enum {
         [self.delegate videoPlayer:self didPlayToEnd:self.track];
       }
     }];
-
+      
+    // jun add 2015-04-24: 若在全屏是自动退出全屏
+      if (self.isFullScreen) {
+          self.view.fullscreenButton.selected = !self.view.fullscreenButton.selected;
+          [self fullScreenButtonTapped];
+      }
   });
 }
 
@@ -1056,9 +1064,12 @@ typedef enum {
 
 - (void)setLoading:(BOOL)loading {
   if (loading) {
+      // jun add 2015-04-24:  一开始隐藏bottomControlOverlay
+      self.view.bottomControlOverlay.hidden = YES;
+      
     [self.view.activityIndicator startAnimating];
   } else {
-    [self.view.activityIndicator stopAnimating];
+    [self.view.activityIndicator stopAnimating]; 
   }
 }
 
@@ -1236,7 +1247,7 @@ typedef enum {
 }
 
 - (void)performOrientationChange:(UIInterfaceOrientation)deviceOrientation {
-  if (!self.forceRotate) {
+  if (!self.forceRotate || (deviceOrientation) == UIInterfaceOrientationPortraitUpsideDown) {
     return;
   }
   if ([self.delegate respondsToSelector:@selector(videoPlayer:willChangeOrientationTo:)]) {
@@ -1259,32 +1270,51 @@ typedef enum {
       parentBounds = CGRectMake(0, 0, CGRectGetWidth(bounds), CGRectGetHeight(bounds));
     }
     
-    weakSelf.view.superview.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
-    weakSelf.view.superview.bounds = parentBounds;
-    [weakSelf.view.superview setFrameOriginX:0.0f];
-    [weakSelf.view.superview setFrameOriginY:0.0f];
-    
-    CGRect wvFrame = weakSelf.view.superview.superview.frame;
-    if (wvFrame.origin.y > 0) {
-      wvFrame.size.height = CGRectGetHeight(bounds) ;
-      wvFrame.origin.y = 0;
-      weakSelf.view.superview.superview.frame = wvFrame;
-    }
-    
-    weakSelf.view.bounds = viewBoutnds;
-    [weakSelf.view setFrameOriginX:0.0f];
-    [weakSelf.view setFrameOriginY:0.0f];
-    [weakSelf.view layoutForOrientation:deviceOrientation];
+      // jun add 2015-04-24: 修改选择视图
+      BOOL isLandscape = UIInterfaceOrientationIsLandscape(deviceOrientation);
+      if (!isLandscape) {
+          viewBoutnds  = CGRectMake(0, 0, CGRectGetWidth(self.originFrame), CGRectGetHeight(self.originFrame));
+      }
+      
+      weakSelf.view.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
+      weakSelf.view.bounds = viewBoutnds;
+      if (isLandscape) {
+          [weakSelf.view setFrameOriginX:0.0f];
+          [weakSelf.view setFrameOriginY:0.0f];
+      } else {
+          [weakSelf.view setFrameOriginX:CGRectGetMinX(self.originFrame)];
+          [weakSelf.view setFrameOriginY:CGRectGetMinY(self.originFrame)];
+      }
+      [weakSelf.view layoutForOrientation:deviceOrientation];
+      
+#ifdef ORIGIN_CODE
+      weakSelf.view.superview.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
+      weakSelf.view.superview.bounds = parentBounds;
+      [weakSelf.view.superview setFrameOriginX:0.0f];
+      [weakSelf.view.superview setFrameOriginY:0.0f];
+      
+      CGRect wvFrame = weakSelf.view.superview.superview.frame;
+      if (wvFrame.origin.y > 0) {
+          wvFrame.size.height = CGRectGetHeight(bounds) ;
+          wvFrame.origin.y = 0;
+          weakSelf.view.superview.superview.frame = wvFrame;
+      }
+      
+      weakSelf.view.bounds = viewBoutnds;
+      [weakSelf.view setFrameOriginX:0.0f];
+      [weakSelf.view setFrameOriginY:0.0f];
+      [weakSelf.view layoutForOrientation:deviceOrientation];
+#endif
 
   } completion:^(BOOL finished) {
     if ([self.delegate respondsToSelector:@selector(videoPlayer:didChangeOrientationFrom:)]) {
       [self.delegate videoPlayer:self didChangeOrientationFrom:lastOrientation];
     }
   }];
-  
+    
   [[UIApplication sharedApplication] setStatusBarOrientation:self.visibleInterfaceOrientation animated:YES];
-  [self updateCaptionView:self.view.captionBottomView caption:self.captionBottom playerView:self.view];
-  [self updateCaptionView:self.view.captionTopView caption:self.captionTop playerView:self.view];
+//  [self updateCaptionView:self.view.captionBottomView caption:self.captionBottom playerView:self.view];
+//  [self updateCaptionView:self.view.captionTopView caption:self.captionTop playerView:self.view];
   self.view.fullscreenButton.selected = self.isFullScreen = UIInterfaceOrientationIsLandscape(deviceOrientation);
 }
 
