@@ -384,6 +384,9 @@
   if ([touch.view isKindOfClass:[VKScrubber class]] ||
       [touch.view isKindOfClass:[UIButton class]]) {
     // prevent recognizing touches on the slider
+      
+//      NSLog(NSStringFromCGPoint([touch locationInView:self.view]));
+      
     return NO;
   }
   return YES;

@@ -113,6 +113,8 @@ typedef enum {
   self.originFrame = bounds;
     
   self.view.bottomControlOverlay.hidden = YES;
+    
+  self.watchedLength = 0.;
 }
 
 - (void)initializePlayerView {
@@ -300,6 +302,8 @@ typedef enum {
 }
 
 - (void)seekToTimeInSecond:(float)sec userAction:(BOOL)isUserAction completionHandler:(void (^)(BOOL finished))completionHandler {
+  self.watchedLength = sec;
+    
   [self scrubbingBegin];
   [self scrubbingEndAtSecond:sec userAction:isUserAction completionHandler:completionHandler];
 }
@@ -317,7 +321,7 @@ typedef enum {
     [self.view setPlayButtonsEnabled:NO];
     
     CGFloat lastWatchedTime = [self.track.lastDurationWatchedInSeconds floatValue];
-    if (lastWatchedTime > 5) lastWatchedTime -= 5;
+//    if (lastWatchedTime > 5) lastWatchedTime -= 5;  jun delete 2015-04-28
     
     DDLogVerbose(@"Seeking to last watched duration: %f", lastWatchedTime);
     [self.view.scrubber setValue:([self.player currentItemDuration] > 0) ? lastWatchedTime / [self.player currentItemDuration] : 0.0f animated:NO];
@@ -456,7 +460,11 @@ typedef enum {
         self.avPlayer = [self playerWithPlayerItem:self.playerItem];
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
-        
+          
+        if (self.watchedLength > 0)
+        {
+          [self scrubbingEndAtSecond:self.watchedLength userAction:YES completionHandler:nil];
+        }
       } else {
         // You should deal with the error appropriately.
         [self handleErrorCode:kVideoPlayerErrorAssetLoadError track:track];

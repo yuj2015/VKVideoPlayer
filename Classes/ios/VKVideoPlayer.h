@@ -131,6 +131,7 @@ VKVideoPlayerViewDelegate
 
 // jun add 2015-04-22
 @property (nonatomic, assign) CGRect originFrame;
+@property (nonatomic, assign) float watchedLength;
 
 
 - (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView;
