@@ -111,6 +111,8 @@ typedef enum {
     
   // jun add 2015-04-22
   self.originFrame = bounds;
+    
+  self.view.bottomControlOverlay.hidden = YES;
 }
 
 - (void)initializePlayerView {
