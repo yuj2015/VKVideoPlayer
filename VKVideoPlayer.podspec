@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
 
   s.name         = "VKVideoPlayer"
-  s.version      = "0.1.4"
+  s.version      = "0.1.5"
   s.summary      = "VKVideoPlayer is customizable video player component that is able to play mp4, hls videos and display subtitles."
 
   s.description  = <<-DESC

@@ -320,7 +320,8 @@ typedef enum {
     
     [self.view setPlayButtonsEnabled:NO];
     
-    CGFloat lastWatchedTime = [self.track.lastDurationWatchedInSeconds floatValue];
+//    CGFloat lastWatchedTime = [self.track.lastDurationWatchedInSeconds floatValue]; jun delete 2015-04-29
+      CGFloat lastWatchedTime = self.watchedLength;
 //    if (lastWatchedTime > 5) lastWatchedTime -= 5;  jun delete 2015-04-28
     
     DDLogVerbose(@"Seeking to last watched duration: %f", lastWatchedTime);
@@ -461,10 +462,10 @@ typedef enum {
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
           
-        if (self.watchedLength > 0)
-        {
-          [self scrubbingEndAtSecond:self.watchedLength userAction:YES completionHandler:nil];
-        }
+//        if (self.watchedLength > 0)
+//        {
+//          [self scrubbingEndAtSecond:self.watchedLength userAction:YES completionHandler:nil];
+//        }
       } else {
         // You should deal with the error appropriately.
         [self handleErrorCode:kVideoPlayerErrorAssetLoadError track:track];
@@ -1279,7 +1280,7 @@ typedef enum {
       viewBoutnds = CGRectMake(0, 0, CGRectGetWidth(self.portraitFrame), CGRectGetHeight(self.portraitFrame));
       parentBounds = CGRectMake(0, 0, CGRectGetWidth(bounds), CGRectGetHeight(bounds));
     }
-    
+      
       // jun add 2015-04-24: 修改选择视图
       BOOL isLandscape = UIInterfaceOrientationIsLandscape(deviceOrientation);
       if (!isLandscape) {
@@ -1295,6 +1296,7 @@ typedef enum {
           [weakSelf.view setFrameOriginX:CGRectGetMinX(self.originFrame)];
           [weakSelf.view setFrameOriginY:CGRectGetMinY(self.originFrame)];
       }
+      
       [weakSelf.view layoutForOrientation:deviceOrientation];
       
 #ifdef ORIGIN_CODE
