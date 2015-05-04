@@ -71,6 +71,8 @@ typedef enum {
 }
 
 - (void)dealloc {
+  //  NSLog(@"%@:dealloc", self);
+    
   [self removeObservers];
 
   [self.externalMonitor deactivate];
@@ -85,6 +87,8 @@ typedef enum {
   self.playerItem = nil;
 
   [self pauseContent];
+    
+  [self clearPlayer];  
 }
 
 #pragma mark - initialize
