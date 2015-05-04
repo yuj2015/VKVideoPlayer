@@ -88,7 +88,7 @@ typedef enum {
 
   [self pauseContent];
     
-  [self clearPlayer];  
+  [self clearPlayer];
 }
 
 #pragma mark - initialize
