@@ -44,8 +44,8 @@ Pod::Spec.new do |s|
 
   s.dependency 'DTCoreText', '~> 1.6.11'
   s.dependency 'CocoaLumberjack', '~> 1.7.0'
-  s.dependency 'VKFoundation', '0.1.1'
-#  s.dependency 'VKFoundation', :git => 'https://yuj2015@github.com/yuj2015/VKFoundation.git', :branch => 'gaodun'
+#  s.dependency 'VKFoundation', '0.1.1'
+  s.dependency 'VKFoundation', :git => 'https://github.com/yuj2015/VKFoundation.git', :branch => 'gaodun'
   s.dependency 'FontAwesomeKit', '~> 2.2.0'
 
 end
