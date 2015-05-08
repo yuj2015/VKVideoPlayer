@@ -48,4 +48,9 @@ Pod::Spec.new do |s|
 #  s.dependency 'VKFoundation', { :git => 'https://github.com/yuj2015/VKFoundation.git', :branch => 'gaodun'}
   s.dependency 'FontAwesomeKit', '~> 2.2.0'
 
+  s.subspec 'VKFoundation' do |vkfoundation|
+      vkfoundation.version  = '0.1.1'
+      vkfoundation.source   = { :git => "https://github.com/yuj2015/VKFoundation.git", :branch => 'gaodun' }
+  end
+
 end
