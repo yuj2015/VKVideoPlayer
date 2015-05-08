@@ -132,6 +132,7 @@ VKVideoPlayerViewDelegate
 // jun add 2015-04-22
 @property (nonatomic, assign) CGRect originFrame;
 @property (nonatomic, assign) float watchedLength;
+@property (nonatomic, assign) BOOL pauseStatusNeed;
 
 
 - (id)initWithVideoPlayerView:(VKVideoPlayerView*)videoPlayerView;

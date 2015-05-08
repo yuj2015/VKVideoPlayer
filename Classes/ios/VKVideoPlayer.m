@@ -119,6 +119,8 @@ typedef enum {
   self.view.bottomControlOverlay.hidden = YES;
     
   self.watchedLength = 0.;
+    
+  self.pauseStatusNeed = NO;
 }
 
 - (void)initializePlayerView {
@@ -297,6 +299,9 @@ typedef enum {
                                   nil];
     [[NSNotificationCenter defaultCenter] postNotificationName:kVKVideoPlayerDurationDidLoadNotification object:self userInfo:durationInfo];
   }
+    
+  if (self.pauseStatusNeed)
+    [self pauseContent];
 
   [self.view hideControlsIfNecessary];
   
@@ -466,6 +471,8 @@ typedef enum {
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
           
+        if (self.pauseStatusNeed)
+            [self pauseContent];
 //        if (self.watchedLength > 0)
 //        {
 //          [self scrubbingEndAtSecond:self.watchedLength userAction:YES completionHandler:nil];
