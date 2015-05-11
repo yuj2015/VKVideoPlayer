@@ -94,6 +94,8 @@
 
 @property (nonatomic, strong) NSNumber* playerControlsAutoHideTime;
 
+@property (unsafe_unretained, nonatomic) IBOutlet UILabel *courseTitleLabel;
+
 - (IBAction)fullscreenButtonTapped:(id)sender;
 - (IBAction)playButtonTapped:(id)sender;
 - (IBAction)nextTrackButtonPressed:(id)sender;

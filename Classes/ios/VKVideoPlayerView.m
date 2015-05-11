@@ -48,7 +48,7 @@
   self.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
   [self addSubview:self.view];
   
-  self.titleLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(22.0f, 14.0f));
+  self.titleLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(22.0f, 17.0f));
   self.titleLabel.textColor = THEMECOLOR(@"colorFont4");
   self.titleLabel.text = @"";
 
@@ -102,15 +102,26 @@
       // jun add 2015-04-24: 修改图片
 //      [button setBackgroundImage:[[UIImage imageWithStackedIcons:(NSArray*)[FAKIonIcons iosArrowLeftIconWithSize:30] imageSize:CGSizeMake(30, 30)] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
       
-      FAKIonIcons *icon = [FAKIonIcons iosArrowLeftIconWithSize:20];
+      FAKIonIcons *icon = [FAKIonIcons iosArrowLeftIconWithSize:30];//20
       [icon addAttribute:NSForegroundColorAttributeName value:[UIColor whiteColor]];
-      UIImage *image= [UIImage imageWithStackedIcons: [NSArray arrayWithObject:icon] imageSize:CGSizeMake(20, 20)];
+      UIImage *image= [UIImage imageWithStackedIcons: [NSArray arrayWithObject:icon] imageSize:CGSizeMake(30, 30)];
       [button setImage:image forState:UIControlStateNormal];
       
-      [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
-    button.layer.cornerRadius = 15.0f;
-    button.clipsToBounds = YES;
+//      [button setBackgroundImage:[[UIImage imageWithColor:THEMECOLOR(@"colorBackground8")] imageByApplyingAlpha:0.6f] forState:UIControlStateNormal];
+//      button.layer.cornerRadius = 22.0f;//15.0f;
+//    button.clipsToBounds = YES;
   }
+    
+    self.courseTitleLabel.font = THEMEFONT(@"fontRegular", DEVICEVALUE(22.0f, 16.0f));
+    self.currentTimeLabel.textColor = self.titleLabel.textColor;
+    overlay = [[UIView alloc] initWithFrame:self.topPortraitControlOverlay.frame];
+    overlay.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    overlay.backgroundColor = THEMECOLOR(@"colorBackground8");
+    overlay.alpha = 0.6f;
+    [self.topPortraitControlOverlay addSubview:overlay];
+    [self.topPortraitControlOverlay sendSubviewToBack:overlay];
+    CGRect screenFrame = [UIScreen mainScreen].bounds;
+    self.courseTitleLabel.frame = CGRectMake(50, 1, screenFrame.size.width-100, 44);
   
   [self.topPortraitCloseButton addTarget:self action:@selector(doneButtonTapped:) forControlEvents:UIControlEventTouchUpInside];
   
@@ -395,6 +406,12 @@
 - (void)layoutForOrientation:(UIInterfaceOrientation)interfaceOrientation {
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
     self.topControlOverlay.hidden = YES;
+      
+      CGRect screenFrame = [UIScreen mainScreen].bounds;
+      CGRect frame = self.courseTitleLabel.frame;
+      frame.size.width = screenFrame.size.height - 100;
+      self.courseTitleLabel.frame = frame;
+      
 //    self.topPortraitControlOverlay.hidden = NO;
     
 //    [self.buttonPlaceHolderView setFrameOriginY:PADDING/2];
@@ -415,6 +432,11 @@
   } else {
     [self.topControlOverlay setFrameOriginY:0.0f];
     self.topControlOverlay.hidden = YES;
+      
+      CGRect screenFrame = [UIScreen mainScreen].bounds;
+      CGRect frame = self.courseTitleLabel.frame;
+      frame.size.width = screenFrame.size.height - 100;
+      self.courseTitleLabel.frame = frame;
       
       // jun add 2015-04-24: 重新设置topPortraitControlOverlay位置
       [self.topPortraitControlOverlay setFrameOriginY:0.0f];
