@@ -407,9 +407,10 @@
   if (UIInterfaceOrientationIsPortrait(interfaceOrientation)) {
     self.topControlOverlay.hidden = YES;
       
-      CGRect screenFrame = [UIScreen mainScreen].bounds;
+      CGRect topControlFrame = self.topControlOverlay.frame;
       CGRect frame = self.courseTitleLabel.frame;
-      frame.size.width = screenFrame.size.height - 100;
+      frame.origin.x = 50;
+      frame.size.width = topControlFrame.size.width - 100;
       self.courseTitleLabel.frame = frame;
       
 //    self.topPortraitControlOverlay.hidden = NO;
@@ -420,7 +421,8 @@
 //    self.captionButton.hidden = YES;
 //    self.videoQualityButton.hidden = YES;
       
-    [self.bigPlayButton setFrameOriginY:CGRectGetMinY(self.bottomControlOverlay.frame)/2 - CGRectGetHeight(self.bigPlayButton.frame)/2];
+      [self.bigPlayButton setFrameOriginY:CGRectGetHeight(self.controls.frame)/2 - CGRectGetHeight(self.bigPlayButton.frame)/2];
+//    [self.bigPlayButton setFrameOriginY:CGRectGetMinY(self.bottomControlOverlay.frame)/2 - CGRectGetHeight(self.bigPlayButton.frame)/2];
     
     for (UIView *control in self.portraitControls) {
       control.hidden = self.isControlsHidden;
@@ -435,6 +437,7 @@
       
       CGRect screenFrame = [UIScreen mainScreen].bounds;
       CGRect frame = self.courseTitleLabel.frame;
+      frame.origin.x = 50;
       frame.size.width = screenFrame.size.height - 100;
       self.courseTitleLabel.frame = frame;
       
