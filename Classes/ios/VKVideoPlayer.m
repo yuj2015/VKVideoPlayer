@@ -52,6 +52,16 @@ typedef enum {
 
 @implementation VKVideoPlayer
 
+- (void)playVideo {
+    self.avPlayer.volume = self.curVolumn;
+    [self playContent];
+}
+
+- (void)pauseVideo {
+    self.avPlayer.volume = 0.0;
+    [self pauseContent];
+}
+
 - (id)init {
   self = [super init];
   if (self) {
@@ -121,6 +131,8 @@ typedef enum {
   self.watchedLength = 0.;
     
   self.pauseStatusNeed = NO;
+    
+  self.curVolumn = 0.0;
 }
 
 - (void)initializePlayerView {
@@ -210,7 +222,7 @@ typedef enum {
 
 - (void)addObservers {
   NSNotificationCenter *defaultCenter = [NSNotificationCenter defaultCenter];
-//  [defaultCenter addObserver:self selector:@selector(applicationWillResignActive) name:UIApplicationWillResignActiveNotification object:nil];
+  [defaultCenter addObserver:self selector:@selector(applicationWillResignActive) name:UIApplicationWillResignActiveNotification object:nil];
 //  [defaultCenter addObserver:self selector:@selector(applicationDidBecomeActive) name:UIApplicationDidBecomeActiveNotification object:nil];
   [defaultCenter addObserver:self selector:@selector(volumeChanged:) name:@"AVSystemController_SystemVolumeDidChangeNotification" object:nil];
 
@@ -233,7 +245,17 @@ typedef enum {
   [defaults removeObserver:self forKeyPath:kVKSettingsTopSubtitlesEnabledKey];
   [defaults removeObserver:self forKeyPath:kVKSettingsSubtitleLanguageCodeKey];
   [defaults removeObserver:self forKeyPath:kVKVideoQualityKey];
-  
+}
+
+- (void)applicationWillResignActive {
+    self.view.fullscreenButton.selected = false;
+    self.isFullScreen = self.view.fullscreenButton.selected;
+    
+    if (self.isFullScreen) {
+        [self performOrientationChange:UIInterfaceOrientationLandscapeRight];
+    } else {
+        [self performOrientationChange:UIInterfaceOrientationPortrait];
+    }
 }
 
 - (void)reachabilityChanged:(NSNotification*)notification {
@@ -471,6 +493,8 @@ typedef enum {
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
           
+          self.curVolumn = self.avPlayer.volume;
+          
         if (self.pauseStatusNeed)
             [self pauseContent];
 //        if (self.watchedLength > 0)
@@ -500,7 +524,9 @@ typedef enum {
           if ([self.delegate respondsToSelector:@selector(videoPlayer:willStartVideo:)]) {
             [self.delegate videoPlayer:self willStartVideo:self.track];
           }
-          [self seekToLastWatchedDuration];
+            
+            if (!self.pauseStatusNeed)
+                [self seekToLastWatchedDuration];
         }];
         break;
       }
@@ -858,6 +884,8 @@ typedef enum {
 }
 
 - (void)playContent {
+  self.pauseStatusNeed = false;
+    
   RUN_ON_UI_THREAD(^{
     if (self.state == VKVideoPlayerStateContentPaused) {
       self.state = VKVideoPlayerStateContentPlaying;
@@ -1298,6 +1326,7 @@ typedef enum {
           viewBoutnds  = CGRectMake(0, 0, CGRectGetWidth(self.originFrame), CGRectGetHeight(self.originFrame));
       }
       
+      weakSelf.view.transform = CGAffineTransformIdentity;
       weakSelf.view.transform = CGAffineTransformMakeRotation(degreesToRadians(degrees));
       weakSelf.view.bounds = viewBoutnds;
       if (isLandscape) {
