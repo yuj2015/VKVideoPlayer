@@ -53,12 +53,14 @@ typedef enum {
 @implementation VKVideoPlayer
 
 - (void)playVideo {
-    self.avPlayer.volume = self.curVolumn;
     [self playContent];
 }
 
 - (void)pauseVideo {
-    self.avPlayer.volume = 0.0;
+    self.pauseStatusNeed = YES;
+    if (self.avPlayer != nil) {
+        self.avPlayer.volume = 0.0;
+    }
     [self pauseContent];
 }
 
@@ -131,8 +133,7 @@ typedef enum {
   self.watchedLength = 0.;
     
   self.pauseStatusNeed = NO;
-    
-  self.curVolumn = 0.0;
+
 }
 
 - (void)initializePlayerView {
@@ -349,7 +350,8 @@ typedef enum {
 - (void)seekToLastWatchedDuration {
   RUN_ON_UI_THREAD(^{
     
-    [self.view setPlayButtonsEnabled:NO];
+//    [self.view setPlayButtonsEnabled:NO];
+      [self.view setPlayButtonsEnabled:YES];
     
 //    CGFloat lastWatchedTime = [self.track.lastDurationWatchedInSeconds floatValue]; jun delete 2015-04-29
       CGFloat lastWatchedTime = self.watchedLength;
@@ -359,8 +361,11 @@ typedef enum {
     [self.view.scrubber setValue:([self.player currentItemDuration] > 0) ? lastWatchedTime / [self.player currentItemDuration] : 0.0f animated:NO];
     
     [self.player seekToTimeInSeconds:lastWatchedTime completionHandler:^(BOOL finished) {
-      if (finished) [self playContent];
-      [self.view setPlayButtonsEnabled:YES];
+        
+        if (!self.pauseStatusNeed) {
+            if (finished) [self playContent];
+            [self.view setPlayButtonsEnabled:YES];
+        }
       
       if ([self.delegate respondsToSelector:@selector(videoPlayer:didStartVideo:)]) {
         [self.delegate videoPlayer:self didStartVideo:self.track];
@@ -493,10 +498,11 @@ typedef enum {
         self.player = (id<VKPlayer>)self.avPlayer;
         [playerLayerView setPlayer:self.avPlayer];
           
-          self.curVolumn = self.avPlayer.volume;
+          if (self.pauseStatusNeed) {
+              self.avPlayer.volume = 0.0;
+              [self pauseContent];
+          }
           
-        if (self.pauseStatusNeed)
-            [self pauseContent];
 //        if (self.watchedLength > 0)
 //        {
 //          [self scrubbingEndAtSecond:self.watchedLength userAction:YES completionHandler:nil];
@@ -525,7 +531,7 @@ typedef enum {
             [self.delegate videoPlayer:self willStartVideo:self.track];
           }
             
-            if (!self.pauseStatusNeed)
+//            if (!self.pauseStatusNeed)
                 [self seekToLastWatchedDuration];
         }];
         break;
@@ -884,7 +890,8 @@ typedef enum {
 }
 
 - (void)playContent {
-  self.pauseStatusNeed = false;
+  self.pauseStatusNeed = NO;
+  self.avPlayer.volume = 1.0;
     
   RUN_ON_UI_THREAD(^{
     if (self.state == VKVideoPlayerStateContentPaused) {
