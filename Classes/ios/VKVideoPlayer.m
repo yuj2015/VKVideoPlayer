@@ -391,6 +391,10 @@ typedef enum {
           self.view.fullscreenButton.selected = !self.view.fullscreenButton.selected;
           [self fullScreenButtonTapped];
       }
+      
+      [self.player seekToTimeInSeconds:0.0 completionHandler:^(BOOL finished) {
+          
+      }];
   });
 }
 
