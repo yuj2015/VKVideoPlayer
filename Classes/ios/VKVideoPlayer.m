@@ -988,7 +988,7 @@ typedef enum {
   _scrubbing = NO;
   float afterSeekTime = self.view.scrubber.value;
   [self scrubbingEndAtSecond:afterSeekTime userAction:YES completionHandler:^(BOOL finished) {
-    if (finished) [self playContent];
+    if (finished && !self.pauseStatusNeed) [self playContent];
   }];
 }
 
