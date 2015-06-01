@@ -57,6 +57,7 @@ typedef enum {
 }
 
 - (void)pauseVideo {
+    self.canPlaying      = NO;
     self.pauseStatusNeed = YES;
     if (self.avPlayer != nil) {
         self.avPlayer.volume = 0.0;
@@ -133,7 +134,7 @@ typedef enum {
   self.watchedLength = 0.;
     
   self.pauseStatusNeed = NO;
-
+  self.canPlaying      = NO;
 }
 
 - (void)initializePlayerView {
@@ -988,7 +989,10 @@ typedef enum {
   _scrubbing = NO;
   float afterSeekTime = self.view.scrubber.value;
   [self scrubbingEndAtSecond:afterSeekTime userAction:YES completionHandler:^(BOOL finished) {
-    if (finished && !self.pauseStatusNeed) [self playContent];
+    if (finished && !self.pauseStatusNeed)
+        [self playContent];
+    else if (finished && self.canPlaying)
+        [self playContent];
   }];
 }
 
