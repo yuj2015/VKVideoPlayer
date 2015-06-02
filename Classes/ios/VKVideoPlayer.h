@@ -134,6 +134,7 @@ VKVideoPlayerViewDelegate
 @property (nonatomic, assign) float watchedLength;
 @property (nonatomic, assign) BOOL pauseStatusNeed;
 @property (nonatomic, assign) BOOL canPlaying;
+@property (nonatomic, assign) BOOL scrubEndFromDisappear;
 
 
 - (void)playVideo;

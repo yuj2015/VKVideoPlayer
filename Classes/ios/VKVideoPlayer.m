@@ -135,6 +135,7 @@ typedef enum {
     
   self.pauseStatusNeed = NO;
   self.canPlaying      = NO;
+  self.scrubEndFromDisappear = NO;
 }
 
 - (void)initializePlayerView {
@@ -989,6 +990,10 @@ typedef enum {
   _scrubbing = NO;
   float afterSeekTime = self.view.scrubber.value;
   [self scrubbingEndAtSecond:afterSeekTime userAction:YES completionHandler:^(BOOL finished) {
+      if (self.pauseStatusNeed && self.canPlaying && self.scrubEndFromDisappear) {
+          self.scrubEndFromDisappear = NO;
+          return ;
+      }
     if (finished && !self.pauseStatusNeed)
         [self playContent];
     else if (finished && self.canPlaying)
